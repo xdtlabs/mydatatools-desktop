@@ -60,6 +60,37 @@ def main() -> None:
 
     # make a local directory for models
     os.makedirs("models", exist_ok=True)
+
+    # Initialize default model at startup
+    print(f"[STARTUP] Initializing default model: {DEFAULT_LOCAL_MODEL}")
+    local_path = get_local_path(DEFAULT_LOCAL_MODEL)
+    
+    # Try primary download method (local archives or GCS)
+    model_available = download_model_if_needed(DEFAULT_LOCAL_MODEL, local_path)
+    
+    # Fallback to Hugging Face if primary method failed
+    if not model_available:
+        print(f"[STARTUP] Primary download failed. Attempting fallback to Hugging Face...")
+        from .utils import download_huggingface_model_if_needed
+        model_available = download_huggingface_model_if_needed(DEFAULT_LOCAL_MODEL, local_path)
+
+    if model_available:
+        try:
+            print(f"[STARTUP] Loading model {DEFAULT_LOCAL_MODEL}...")
+            # Import here to avoid circular imports if any
+            from .model_manager import load_local_model
+            from .state import set_llm_instance, set_current_model_id
+            
+            llm = load_local_model(local_path)
+            set_llm_instance(llm)
+            set_current_model_id(DEFAULT_LOCAL_MODEL)
+            print(f"[STARTUP] Model loaded successfully.")
+        except Exception as e:
+            print(f"[STARTUP] Failed to load model: {e}")
+            # We continue to start the server so the client can at least connect,
+            # but the model won't be loaded.
+    else:
+        print(f"[STARTUP] Failed to download/find model {DEFAULT_LOCAL_MODEL}")
     
     # Run the server
     import uvicorn

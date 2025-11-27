@@ -115,7 +115,6 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
             return {"status": "success", "message": f"Session already active with model: {model_id}", "model": model_id}
         
         # 2. Download files if necessary
-        # 2. Download files if necessary
         import asyncio
         loop = asyncio.get_running_loop()
         
