@@ -46,7 +46,7 @@ init:
 # Build the aichat.zip package
 build-aichat-macos:
 	@echo "Building aichat-macos.zip..."
-	cd client/assets/python/aichat && python -m pip install -r requirements.txt && python -m PyInstaller main.spec --clean --noconfirm && cd dist && zip -r ../../../../app/aichat-macos.zip aichat
+	cd client/assets/python/aichat && python -m pip install -r requirements.txt && python -m PyInstaller main.spec --clean --noconfirm && cd dist/aichat && zip -r ../../../../../app/aichat-macos.zip aichat
 	@echo "Build complete: app/aichat-macos.zip"
 
 

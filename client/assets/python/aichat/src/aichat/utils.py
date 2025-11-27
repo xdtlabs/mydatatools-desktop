@@ -115,6 +115,8 @@ def download_model_if_needed(model_id: str, local_path: str, custom_archive_path
         True
     """
     from huggingface_hub import snapshot_download
+
+    print("[download_model_if_needed] download model: {model_id}")
     
     # Check if model directory already exists and has files
     if not os.path.exists(local_path) or not os.listdir(local_path):

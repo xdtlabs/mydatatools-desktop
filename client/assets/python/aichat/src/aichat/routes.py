@@ -19,7 +19,7 @@ from .model_manager import (
     generate_image_embedding,
     decode_base64_image, load_gemini_model
 )
-from .utils import get_local_path, download_model_if_needed, download_huggingface_model_if_needed
+from .utils import get_local_path, download_model_if_needed
 from .state import (
     get_llm_instance, set_llm_instance,
     get_current_model_id, set_current_model_id,

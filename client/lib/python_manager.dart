@@ -108,7 +108,7 @@ class PythonManager {
 
       await _pipeOutput(_pythonProc!);
 
-      `//Start default session
+      //Start default session
       MainApp.llmServiceUrl.listen((llmServiceUrl) async {
         if (llmServiceUrl != null) {
           final session = await http.post(
