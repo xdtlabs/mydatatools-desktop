@@ -1,11 +1,8 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-
-import 'package:mydatatools/app_logger.dart';
 import 'package:flutter/material.dart';
-import 'package:mydatatools/main.dart';
+import 'package:genui/genui.dart';
+import 'package:mydatatools/app_logger.dart';
+import 'package:mydatatools/modules/aichat/services/local_llm_content_generator.dart';
 import 'package:mydatatools/python_manager.dart';
-// fetch the response from the selected LLM service
 
 class AichatPage extends StatefulWidget {
   const AichatPage({super.key});
@@ -16,128 +13,94 @@ class AichatPage extends StatefulWidget {
 
 class _AichatPage extends State<AichatPage> {
   AppLogger logger = AppLogger(null);
-  bool _isChatLoading = false;
   bool _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
   String _selectedModel = 'Local LLM';
   final List<String> _models = ['Local LLM', 'Gemini', 'ChatGPT', 'Grok'];
   final _textController = TextEditingController();
-  final List<Map<String, dynamic>> _chatHistory = <Map<String, dynamic>>[
-    {
-      "role": "model",
-      "parts": ["You are a helpful assistant."],
-    },
-    {
-      "role": "user",
-      "parts": ["Hello!"],
-    },
-  ];
+
+  late final GenUiManager _genUiManager;
+  late final GenUiConversation _genUiConversation;
+  final _surfaceIds = <String>[];
+  final _textMessages = <Map<String, String>>[];
 
   @override
   void initState() {
-    //get all chat sessions
-    //_collectionService?.invoke(GetCollectionsServiceCommand("email"));
+    super.initState();
 
     // listen for changes
     PythonManager.isLLMServiceRunning.addListener(() {
-      setState(() {
-        _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
-      });
+      if (mounted) {
+        setState(() {
+          _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
+        });
+      }
     });
 
-    super.initState();
+    _genUiManager = GenUiManager(catalog: CoreCatalogItems.asCatalog());
+
+    final contentGenerator = LocalLlmContentGenerator(
+      systemInstruction: 'You are a helpful assistant.',
+    );
+
+    // Listen to text responses from the generator for non-UI messages
+    contentGenerator.textResponseStream.listen((text) {
+      if (mounted) {
+        setState(() {
+          _textMessages.add({'role': 'assistant', 'text': text});
+        });
+      }
+    });
+
+    _genUiConversation = GenUiConversation(
+      genUiManager: _genUiManager,
+      contentGenerator: contentGenerator,
+      onSurfaceAdded: _onSurfaceAdded,
+      onSurfaceDeleted: _onSurfaceDeleted,
+    );
   }
 
   @override
   void dispose() {
     _textController.dispose();
+    _genUiConversation.dispose();
     super.dispose();
   }
 
-  void _sendMessage(String message) async {
+  void _onSurfaceAdded(SurfaceAdded update) {
+    setState(() {
+      _surfaceIds.add(update.surfaceId);
+    });
+  }
+
+  void _onSurfaceDeleted(SurfaceRemoved update) {
+    setState(() {
+      _surfaceIds.remove(update.surfaceId);
+    });
+  }
+
+  void _sendMessage(String message) {
     if (message.trim().isEmpty) {
       return;
     }
 
-    String? llmServiceUrl = MainApp.llmServiceUrl.valueOrNull;
-    if (llmServiceUrl == null || llmServiceUrl.isEmpty) {
+    if (!_isLLMServiceRunning) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('LLM Service is not running.')),
       );
       return;
     }
 
-    // add user message to chat history
+    // Add user message to text messages
     setState(() {
-      _isChatLoading = true;
-      _chatHistory.add({
-        "role": "user",
-        "parts": [message],
-      });
+      _textMessages.add({'role': 'user', 'text': message});
     });
 
-    // call url with message and show response
-    final session = await http.post(
-      Uri.parse("$llmServiceUrl/start-session"),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, dynamic>{"model_name": "google/gemma-3-4b-it"}),
-    );
-
-    if (200 != session.statusCode) {
-      logger.e('Failed to start session: ${session.statusCode}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error starting session: ${session.statusCode}'),
-        ),
-      );
-      return;
-    }
-
-    http
-        .post(
-          Uri.parse("$llmServiceUrl/chat"),
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode(<String, dynamic>{
-            "prompt": message,
-            "system_instruction": "You are a helpful assistant.",
-          }),
-        )
-        .then((response) {
-          if (response.statusCode == 200) {
-            final responseData = jsonDecode(response.body);
-            logger.d('Received response: $responseData');
-
-            setState(() {
-              _isChatLoading = false;
-              _chatHistory.add({
-                "role": "model",
-                "parts": [responseData['ai_response']],
-              });
-            });
-          } else {
-            logger.e('Failed to get response: ${response.statusCode}');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${response.statusCode}')),
-            );
-          }
-        })
-        .catchError((error) {
-          logger.e('Error sending message: $error');
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $error')));
-        });
-
+    _genUiConversation.sendRequest(UserMessage.text(message));
     _textController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    //final theme = Theme.of(context);
-
     if (!_isLLMServiceRunning) {
       return const Center(
         child: Text("LLM Service is not running or is still starting up."),
@@ -147,14 +110,13 @@ class _AichatPage extends State<AichatPage> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: Text("AI Chat"),
+        title: const Text("AI Chat"),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(height: 1.0, color: Colors.grey.shade300),
         ),
         actions: <Widget>[
           IconButton(
-            // TODO: disable is no files are checked
             icon: const Icon(Icons.add, color: Colors.black),
             tooltip: 'New Session',
             onPressed: () {
@@ -165,23 +127,22 @@ class _AichatPage extends State<AichatPage> {
           ),
         ],
       ),
-      body: Stack(
-        children: <Widget>[
-          // TODO: This will be the chat history
-          Positioned.fill(
-            child: Container(
-              padding: const EdgeInsets.only(bottom: 200, left: 16, right: 16),
-              child: ListView.builder(
-                itemCount: _chatHistory.length,
-                itemBuilder: (context, index) {
-                  final entry = _chatHistory[index];
-                  final role =
-                      (entry['role'] as String?)?.toLowerCase() ?? 'model';
-                  final parts =
-                      (entry['parts'] as List<dynamic>?)?.cast<String>() ??
-                      <String>[];
-                  final text = parts.join('\n');
-                  final isUser = role == 'user';
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.only(
+                bottom: 20,
+                left: 16,
+                right: 16,
+                top: 16,
+              ),
+              itemCount: _textMessages.length + _surfaceIds.length,
+              itemBuilder: (context, index) {
+                // Display text messages first, then surfaces
+                if (index < _textMessages.length) {
+                  final msg = _textMessages[index];
+                  final isUser = msg['role'] == 'user';
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
                     child: Align(
@@ -203,7 +164,7 @@ class _AichatPage extends State<AichatPage> {
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Text(
-                          text,
+                          msg['text'] ?? '',
                           style: TextStyle(
                             color: isUser ? Colors.white : Colors.black87,
                           ),
@@ -211,89 +172,104 @@ class _AichatPage extends State<AichatPage> {
                       ),
                     ),
                   );
-                },
-              ),
+                } else {
+                  final surfaceIndex = index - _textMessages.length;
+                  final id = _surfaceIds[surfaceIndex];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: GenUiSurface(
+                      host: _genUiConversation.host,
+                      surfaceId: id,
+                    ),
+                  );
+                }
+              },
             ),
           ),
-          Positioned(
-            bottom: 50,
-            left: 20,
-            right: 20,
-            child: Center(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25.0),
-                  boxShadow: [
-                    BoxShadow(
-                      offset: const Offset(0, 3),
-                      blurRadius: 5,
-                      color: Colors.grey.withOpacity(0.5),
-                    ),
-                  ],
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  offset: const Offset(0, -2),
+                  blurRadius: 5,
+                  color: Colors.grey.withOpacity(0.1),
                 ),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _textController,
-                      onSubmitted: _sendMessage,
-                      keyboardType: TextInputType.multiline,
-                      minLines: 3,
-                      maxLines: 5,
-                      decoration: const InputDecoration(
-                        hintText: "Ask me anything...",
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 20.0,
-                          vertical: 10.0,
+              ],
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25.0),
+                boxShadow: [
+                  BoxShadow(
+                    offset: const Offset(0, 3),
+                    blurRadius: 5,
+                    color: Colors.grey.withOpacity(0.5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _textController,
+                    onSubmitted: _sendMessage,
+                    keyboardType: TextInputType.multiline,
+                    minLines: 1,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: "Ask me anything...",
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 20.0,
+                        vertical: 10.0,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          tooltip: 'Add Files',
+                          onPressed: () {
+                            // TODO: implement file picking
+                          },
                         ),
-                        border: InputBorder.none,
-                      ),
+                        const Spacer(),
+                        DropdownButton<String>(
+                          value: _selectedModel,
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _selectedModel = newValue;
+                              });
+                            }
+                          },
+                          items:
+                              _models.map<DropdownMenuItem<String>>((
+                                String value,
+                              ) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                          underline: Container(),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.send),
+                          tooltip: 'Send',
+                          onPressed: () {
+                            _sendMessage(_textController.text);
+                          },
+                        ),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.add),
-                            tooltip: 'Add Files',
-                            onPressed: () {
-                              // TODO: implement file picking
-                            },
-                          ),
-                          const Spacer(),
-                          DropdownButton<String>(
-                            value: _selectedModel,
-                            onChanged: (String? newValue) {
-                              if (newValue != null) {
-                                setState(() {
-                                  _selectedModel = newValue;
-                                });
-                              }
-                            },
-                            items:
-                                _models.map<DropdownMenuItem<String>>((
-                                  String value,
-                                ) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(value),
-                                  );
-                                }).toList(),
-                            underline:
-                                Container(), // Hides the default underline
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.send),
-                            tooltip: 'Send',
-                            onPressed: () {
-                              _sendMessage(_textController.text);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
