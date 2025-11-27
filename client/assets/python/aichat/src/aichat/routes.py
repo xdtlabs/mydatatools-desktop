@@ -19,7 +19,7 @@ from .model_manager import (
     generate_image_embedding,
     decode_base64_image, load_gemini_model
 )
-from .utils import get_local_path, download_model_if_needed
+from .utils import get_local_path, download_model_if_needed, download_huggingface_model_if_needed
 from .state import (
     get_llm_instance, set_llm_instance,
     get_current_model_id, set_current_model_id,
@@ -115,11 +115,31 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
             return {"status": "success", "message": f"Session already active with model: {model_id}", "model": model_id}
         
         # 2. Download files if necessary
-        if not download_model_if_needed(model_id, local_path, request.local_path):
+        # 2. Download files if necessary
+        import asyncio
+        loop = asyncio.get_running_loop()
+        
+        # Run blocking download in thread pool
+        download_success = await loop.run_in_executor(
+            None,
+            download_model_if_needed,
+            model_id, 
+            local_path, 
+            request.local_path
+        )
+        
+        if not download_success:
             # Fallback to Hugging Face download if needed
-            # WIll only work with hugging face token set as env variable on users machine
             print(f"[STARTUP] fallback to hugging face download for model {model_id}")
-            if download_huggingface_model_if_needed(model_id, local_path):
+            hf_success = await loop.run_in_executor(
+                None,
+                download_huggingface_model_if_needed,
+                model_id,
+                local_path,
+                None
+            )
+            
+            if hf_success:
                 print(f"[STARTUP] Default model {model_id} is ready at {local_path}")
             else:
                 raise HTTPException(
