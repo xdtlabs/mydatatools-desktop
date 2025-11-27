@@ -1,0 +1,43 @@
+[project]
+name = "aichat"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Mike Nimer", email = "mnimer@gmail.com"},
+]
+dependencies = [
+    "uvicorn[standard]==0.38.0",
+    "pydantic==2.12.3",
+    "transformers==4.57.1",
+    "sentencepiece==0.2.1",
+    "Pillow==10.4.0",
+    "numpy==1.26.4",
+    "python-multipart==0.0.9",
+    "pytest==8.3.3",
+    "pytest-asyncio==0.24.0",
+    "fastapi==0.120.4",
+    "langchain-core==0.3.79",
+    "langchain==0.3.27",
+    "langchain-huggingface==0.3.1",
+    "huggingface-hub==0.36.0",
+    "torch==2.8.0",
+    "accelerate==1.10.1",
+    "langchain-google-genai",
+]
+requires-python = ">=3.11,<3.14"
+readme = "README.md"
+license = {text = "Apache"}
+
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.options]
+# Enable PEP 582 to create __pypackages__ folder
+use_venv = false
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+namespaces = false
