@@ -10,7 +10,10 @@ class LocalLlmContentGenerator implements ContentGenerator {
   final String systemInstruction;
   final AppLogger logger = AppLogger(null);
 
-  LocalLlmContentGenerator({required this.systemInstruction});
+  LocalLlmContentGenerator({
+    required this.systemInstruction,
+    required String sessionId,
+  }) : _sessionId = sessionId;
 
   final _a2uiMessageController = StreamController<A2uiMessage>.broadcast();
   final _textResponseController = StreamController<String>.broadcast();
@@ -19,7 +22,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
   // We still keep local history for UI purposes if needed, but don't send it to server
   final List<ChatMessage> _localHistory = [];
   // Generate a unique session ID for this instance
-  final String _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+  String _sessionId;
 
   @override
   Stream<A2uiMessage> get a2uiMessageStream => _a2uiMessageController.stream;
@@ -91,12 +94,12 @@ class LocalLlmContentGenerator implements ContentGenerator {
           // GenUI message array
           try {
             final List<dynamic> messagesJson = jsonDecode(aiResponse);
-            logger.d('Parsed ${messagesJson.length} GenUI messages');
+            //logger.d('Parsed ${messagesJson.length} GenUI messages');
 
             // Emit each message to the stream
             for (final messageJson in messagesJson) {
               final message = A2uiMessage.fromJson(messageJson);
-              logger.d('Emitting message: ${message.runtimeType}');
+              //logger.d('Emitting message: ${message.runtimeType}');
               _a2uiMessageController.add(message);
             }
           } catch (e) {
@@ -112,14 +115,14 @@ class LocalLlmContentGenerator implements ContentGenerator {
             final message = A2uiMessage.fromJson(jsonResponse);
             logger.d('Created A2uiMessage, emitting to stream...');
             _a2uiMessageController.add(message);
-            logger.d('A2uiMessage emitted to stream');
+            //logger.d('A2uiMessage emitted to stream');
           } catch (e) {
             logger.e('Failed to parse as GenUI JSON: $e');
             _textResponseController.add(aiResponse);
           }
         } else {
           // Plain text response
-          logger.d('Emitting plain text response');
+          //logger.d('Emitting plain text response');
           _textResponseController.add(aiResponse);
         }
       } else {
@@ -134,6 +137,44 @@ class LocalLlmContentGenerator implements ContentGenerator {
       _errorController.add(ContentGeneratorError(e.toString(), stackTrace));
     } finally {
       _isProcessing.value = false;
+    }
+  }
+
+  Future<void> startSession({
+    required String sessionId,
+    String modelName = 'google/gemma-3-4b-it',
+    List<String>? history = const [],
+  }) async {
+    try {
+      String? llmServiceUrl = MainApp.llmServiceUrl.valueOrNull;
+      if (llmServiceUrl == null || llmServiceUrl.isEmpty) {
+        throw Exception('LLM Service is not running.');
+      }
+
+      // Update the internal session ID
+      _sessionId = sessionId;
+
+      final response = await http.post(
+        Uri.parse("$llmServiceUrl/start-session"),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          "model_name": modelName,
+          "session_id": sessionId,
+          "history": history ?? [],
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        logger.e('Failed to start session: ${response.body}');
+        throw Exception('Failed to start session: ${response.statusCode}');
+      }
+
+      logger.d('Session started successfully: $_sessionId');
+    } catch (e) {
+      logger.e('Error starting session: $e');
+      rethrow;
     }
   }
 }

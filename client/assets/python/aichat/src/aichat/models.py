@@ -68,6 +68,16 @@ class StartSessionRequest(BaseModel):
         description="Optional path to local model directory or tar archive file"
     )
     
+    session_id: Optional[str] = Field(
+        None,
+        description="Unique identifier for the chat session. If provided, history will be associated with this ID."
+    )
+
+    history: Optional[list[str]] = Field(
+        None,
+        description="Optional conversation history to initialize the session with."
+    )
+    
     class Config:
         """Configuration for the StartSessionRequest model with example data."""
         json_schema_extra = {

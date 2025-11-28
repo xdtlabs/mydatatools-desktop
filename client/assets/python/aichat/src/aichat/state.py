@@ -201,5 +201,10 @@ class ConversationManager:
             if session_id in self._histories:
                 del self._histories[session_id]
 
+    async def set_history(self, session_id: str, history: List[str]):
+        """Set the conversation history for a session."""
+        async with self._lock:
+            self._histories[session_id] = history
+
 # Global conversation manager instance
 conversation_manager = ConversationManager()

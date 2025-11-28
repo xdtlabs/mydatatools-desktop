@@ -3,6 +3,7 @@ import 'package:genui/genui.dart';
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/modules/aichat/services/local_llm_content_generator.dart';
 import 'package:mydatatools/python_manager.dart';
+import 'package:uuid/v4.dart';
 
 class AichatPage extends StatefulWidget {
   const AichatPage({super.key});
@@ -36,6 +37,7 @@ class _AichatPage extends State<AichatPage> {
   late final GenUiManager _genUiManager;
   late final GenUiConversation _genUiConversation;
   final List<ChatItem> _chatItems = [];
+  String sessionId = UuidV4().generate().replaceAll('-', '');
 
   @override
   void initState() {
@@ -44,9 +46,22 @@ class _AichatPage extends State<AichatPage> {
     // listen for changes
     PythonManager.isLLMServiceRunning.addListener(() {
       if (mounted) {
-        setState(() {
-          _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
-        });
+        _contentGenerator
+            .startSession(
+              sessionId: sessionId,
+              modelName: 'google/gemma-3-4b-it',
+              history: [],
+            )
+            .then((_) {
+              setState(() {
+                _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
+              });
+            })
+            .catchError((error) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to start new session: $error')),
+              );
+            });
       }
     });
 
@@ -54,6 +69,7 @@ class _AichatPage extends State<AichatPage> {
 
     _contentGenerator = LocalLlmContentGenerator(
       systemInstruction: 'You are a helpful assistant.',
+      sessionId: sessionId,
     );
 
     _contentGenerator.isProcessing.addListener(() {
@@ -128,18 +144,18 @@ class _AichatPage extends State<AichatPage> {
       setState(() {
         _chatItems.add(GenUiSurfaceItem(surfaceId: surfaceId));
       });
-      logger.d('Surface added to list: $surfaceId');
-      logger.d('Total items: ${_chatItems.length}');
+      // logger.d('Surface added to list: $surfaceId');
+      //  logger.d('Total items: ${_chatItems.length}');
     }
   }
 
   void _onSurfaceAdded(SurfaceAdded event) {
-    logger.d('SurfaceAdded event: ${event.surfaceId}');
+    // logger.d('SurfaceAdded event: ${event.surfaceId}');
     _addSurfaceId(event.surfaceId);
   }
 
   void _onSurfaceDeleted(SurfaceRemoved update) {
-    logger.d('Surface deleted: ${update.surfaceId}');
+    // logger.d('Surface deleted: ${update.surfaceId}');
     setState(() {
       _chatItems.removeWhere(
         (item) =>
@@ -172,9 +188,7 @@ class _AichatPage extends State<AichatPage> {
   @override
   Widget build(BuildContext context) {
     if (!_isLLMServiceRunning) {
-      return const Center(
-        child: Text("LLM Service is not running or is still starting up."),
-      );
+      return const Center(child: Text("LLM Service is starting..."));
     }
 
     return Scaffold(
@@ -190,9 +204,33 @@ class _AichatPage extends State<AichatPage> {
             icon: const Icon(Icons.add, color: Colors.black),
             tooltip: 'New Session',
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('todo: new session')),
-              );
+              // Clear local chat history
+              setState(() {
+                _chatItems.clear();
+              });
+
+              //assign new session id
+              sessionId = UuidV4().generate().replaceAll('-', '');
+
+              // Call service to start new session with empty history
+              _contentGenerator
+                  .startSession(
+                    sessionId: sessionId,
+                    modelName: 'google/gemma-3-4b-it',
+                    history: [],
+                  )
+                  .then((_) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('New session started')),
+                    );
+                  })
+                  .catchError((error) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to start new session: $error'),
+                      ),
+                    );
+                  });
             },
           ),
         ],

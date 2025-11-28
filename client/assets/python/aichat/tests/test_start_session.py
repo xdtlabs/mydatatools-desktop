@@ -10,8 +10,8 @@ from unittest.mock import Mock, patch, AsyncMock
 from fastapi import HTTPException
 
 # Import the functions we want to test
-from routes import start_session
-from models import StartSessionRequest
+from aichat.routes import start_session
+from aichat.models import StartSessionRequest
 
 
 class TestStartSession:
@@ -20,9 +20,9 @@ class TestStartSession:
     @pytest.mark.asyncio
     async def test_start_session_model_already_loaded(self):
         """Test start_session when requested model is already loaded."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path:
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path:
             
             # Setup mocks
             model_lock = AsyncMock()
@@ -45,10 +45,10 @@ class TestStartSession:
     @pytest.mark.asyncio
     async def test_start_session_download_failure(self):
         """Test start_session when model download fails."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path, \
-             patch('routes.download_model_if_needed') as mock_download:
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.routes.download_model_if_needed') as mock_download:
             
             # Setup mocks
             model_lock = AsyncMock()
@@ -71,13 +71,13 @@ class TestStartSession:
     @pytest.mark.asyncio
     async def test_start_session_model_loading_failure(self):
         """Test start_session when model loading into memory fails."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path, \
-             patch('routes.download_model_if_needed') as mock_download, \
-             patch('routes.load_model_to_memory') as mock_load_model, \
-             patch('routes.set_llm_instance') as mock_set_llm, \
-             patch('routes.set_current_model_id') as mock_set_model_id, \
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.routes.download_model_if_needed') as mock_download, \
+             patch('aichat.routes.load_local_model') as mock_load_model, \
+             patch('aichat.routes.set_llm_instance') as mock_set_llm, \
+             patch('aichat.routes.set_current_model_id') as mock_set_model_id, \
              patch('builtins.print'):
             
             # Setup mocks
@@ -106,13 +106,13 @@ class TestStartSession:
     @pytest.mark.asyncio
     async def test_start_session_success(self):
         """Test successful model loading and session start."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path, \
-             patch('routes.download_model_if_needed') as mock_download, \
-             patch('routes.load_model_to_memory') as mock_load_model, \
-             patch('routes.set_llm_instance') as mock_set_llm, \
-             patch('routes.set_current_model_id') as mock_set_model_id, \
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.routes.download_model_if_needed') as mock_download, \
+             patch('aichat.routes.load_local_model') as mock_load_model, \
+             patch('aichat.routes.set_llm_instance') as mock_set_llm, \
+             patch('aichat.routes.set_current_model_id') as mock_set_model_id, \
              patch('builtins.print'):
             
             # Setup mocks
@@ -139,6 +139,83 @@ class TestStartSession:
             # Verify model was set
             mock_set_llm.assert_called_with(mock_llm_instance)
             mock_set_model_id.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_start_session_with_history(self):
+        """Test start_session with history initialization."""
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.routes.download_model_if_needed') as mock_download, \
+             patch('aichat.routes.load_local_model') as mock_load_model, \
+             patch('aichat.routes.set_llm_instance') as mock_set_llm, \
+             patch('aichat.routes.set_current_model_id') as mock_set_model_id, \
+             patch('aichat.state.conversation_manager.set_history', new_callable=AsyncMock) as mock_set_history, \
+             patch('builtins.print'):
+            
+            # Setup mocks
+            model_lock = AsyncMock()
+            embedding_lock = AsyncMock()
+            mock_get_locks.return_value = (model_lock, embedding_lock)
+            mock_get_model_id.return_value = None
+            mock_get_local_path.return_value = "/local/path"
+            mock_download.return_value = True
+            mock_llm_instance = Mock()
+            mock_load_model.return_value = mock_llm_instance
+            
+            # Create request with history
+            history = ["User: Hello", "AI: Hi there"]
+            session_id = "test-session-123"
+            request = StartSessionRequest(
+                model_name="test/model",
+                session_id=session_id,
+                history=history
+            )
+            
+            # Call function
+            result = await start_session(request)
+            
+            # Assertions
+            assert result["status"] == "success"
+            
+            # Verify history was set
+            mock_set_history.assert_called_with(session_id, history)
+
+
+    @pytest.mark.asyncio
+    async def test_start_session_model_already_loaded_with_history(self):
+        """Test start_session updates history even if model is already loaded."""
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.state.conversation_manager.set_history', new_callable=AsyncMock) as mock_set_history, \
+             patch('builtins.print'):
+            
+            # Setup mocks
+            model_lock = AsyncMock()
+            embedding_lock = AsyncMock()
+            mock_get_locks.return_value = (model_lock, embedding_lock)
+            mock_get_model_id.return_value = "google/gemma-2-9b-it"
+            mock_get_local_path.return_value = "/local/path"
+            
+            # Create request with history
+            history = ["User: New context", "AI: Acknowledged"]
+            session_id = "existing-session-123"
+            request = StartSessionRequest(
+                model_name="google/gemma-2-9b-it",
+                session_id=session_id,
+                history=history
+            )
+            
+            # Call function
+            result = await start_session(request)
+            
+            # Assertions
+            assert result["status"] == "success"
+            assert "already active" in result["message"]
+            
+            # Verify history was updated
+            mock_set_history.assert_called_with(session_id, history)
 
 
 if __name__ == "__main__":

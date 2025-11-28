@@ -106,6 +106,13 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
 
     # 1. Check if the requested model is already loaded
     if get_current_model_id() == model_id:
+        # Even if model is loaded, we might need to initialize/clear history for the session
+        if request.session_id:
+            from .state import conversation_manager
+            if request.history is not None:
+                await conversation_manager.set_history(request.session_id, request.history)
+                print(f"[SESSION] Initialized history for session {request.session_id} with {len(request.history)} turns.")
+        
         return {"status": "success", "message": f"Session already active with model: {model_id}", "model": model_id}
 
     # Use a lock to prevent multiple model loading attempts concurrently
@@ -162,6 +169,19 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
             
             print(f"[LOADER] Model {model_id} loaded and set as active session.")
             
+            # 4. Initialize history if provided
+            if request.session_id:
+                from .state import conversation_manager
+                if request.history is not None:
+                    await conversation_manager.set_history(request.session_id, request.history)
+                    print(f"[SESSION] Initialized history for session {request.session_id} with {len(request.history)} turns.")
+                else:
+                    # If session_id provided but no history, maybe we want to clear it? 
+                    # Or just leave it as is if it exists? 
+                    # The requirement says "call start_session() with an empty array for the history" to clear it.
+                    # So if history is [], it will be set to [].
+                    pass
+
             return {
                 "status": "success", 
                 "message": f"Model '{model_id}' successfully loaded and session started.",
