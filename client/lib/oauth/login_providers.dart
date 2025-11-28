@@ -49,18 +49,18 @@ extension LoginProviderExtension on LoginProviders {
   String get clientId {
     switch (this) {
       case LoginProviders.google:
-        return "279909695629-gmhsdqgh5jsrpq2nnd2aeisecpm1qrhq.apps.googleusercontent.com";
+        return "";
       case LoginProviders.azure:
-        return "AZURE_CLIENT_ID";
+        return "";
     }
   }
 
   String get clientSecret {
     switch (this) {
       case LoginProviders.google:
-        return "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"; // if applicable
+        return ""; // if applicable
       case LoginProviders.azure:
-        return "AZURE_SECRET"; // if applicable
+        return ""; // if applicable
     }
   }
 
