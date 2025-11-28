@@ -31,6 +31,8 @@ class _AichatPage extends State<AichatPage> {
   final List<String> _models = ['Local LLM', 'Gemini', 'ChatGPT', 'Grok'];
   final _textController = TextEditingController();
 
+  late final LocalLlmContentGenerator _contentGenerator;
+  bool _isGenerating = false;
   late final GenUiManager _genUiManager;
   late final GenUiConversation _genUiConversation;
   final List<ChatItem> _chatItems = [];
@@ -50,13 +52,21 @@ class _AichatPage extends State<AichatPage> {
 
     _genUiManager = GenUiManager(catalog: CoreCatalogItems.asCatalog());
 
-    final contentGenerator = LocalLlmContentGenerator(
+    _contentGenerator = LocalLlmContentGenerator(
       systemInstruction: 'You are a helpful assistant.',
     );
 
+    _contentGenerator.isProcessing.addListener(() {
+      if (mounted) {
+        setState(() {
+          _isGenerating = _contentGenerator.isProcessing.value;
+        });
+      }
+    });
+
     // Debug: Listen to a2uiMessageStream to see if messages are flowing
     // This must be done BEFORE creating GenUiConversation
-    contentGenerator.a2uiMessageStream.listen(
+    _contentGenerator.a2uiMessageStream.listen(
       (message) {
         //logger.d('DEBUG: a2uiMessageStream received message: $message');
       },
@@ -69,7 +79,7 @@ class _AichatPage extends State<AichatPage> {
     );
 
     // Listen to text responses from the generator for non-UI messages
-    contentGenerator.textResponseStream.listen((text) {
+    _contentGenerator.textResponseStream.listen((text) {
       logger.d('DEBUG: textResponseStream received: $text');
       if (mounted) {
         setState(() {
@@ -86,7 +96,7 @@ class _AichatPage extends State<AichatPage> {
     // logger.d('Creating GenUiConversation...');
     _genUiConversation = GenUiConversation(
       genUiManager: _genUiManager,
-      contentGenerator: contentGenerator,
+      contentGenerator: _contentGenerator,
       onSurfaceAdded: _onSurfaceAdded,
       onSurfaceUpdated: (event) {
         //logger.d('SurfaceUpdated event: ${event.surfaceId}');
@@ -104,6 +114,7 @@ class _AichatPage extends State<AichatPage> {
   void dispose() {
     _textController.dispose();
     _genUiConversation.dispose();
+    _contentGenerator.dispose();
     super.dispose();
   }
 
@@ -318,13 +329,24 @@ class _AichatPage extends State<AichatPage> {
                               }).toList(),
                           underline: Container(),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.send),
-                          tooltip: 'Send',
-                          onPressed: () {
-                            _sendMessage(_textController.text);
-                          },
-                        ),
+                        _isGenerating
+                            ? const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.0,
+                                ),
+                              ),
+                            )
+                            : IconButton(
+                              icon: const Icon(Icons.send),
+                              tooltip: 'Send',
+                              onPressed: () {
+                                _sendMessage(_textController.text);
+                              },
+                            ),
                       ],
                     ),
                   ),
