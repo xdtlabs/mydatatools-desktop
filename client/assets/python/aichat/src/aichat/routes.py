@@ -192,6 +192,7 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
     - Includes optional system instructions
     - Strips input prompt from model output
     - Handles response formatting and cleanup
+    - Optionally wraps response in GenUI JSON format
     
     Args:
         request (ChatRequest): Request containing the user prompt and optional system instruction
@@ -218,16 +219,27 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         )
 
     try:
+        # Import GenUI helpers
+        from .genui_schema import GENUI_SYSTEM_PROMPT
+        
         # Gemma 2 uses a specific instruction format (BOS/EOS tokens).
         # We manually construct the prompt to include the system instruction and user query.
         
+        # Build system instruction
+        system_inst = request.system_instruction or ""
+        if request.use_genui:
+            # Add GenUI instructions to system prompt
+            system_inst = f"{system_inst}\n\n{GENUI_SYSTEM_PROMPT}" if system_inst else GENUI_SYSTEM_PROMPT
+        
         # A common instruction format for Gemma 2
         full_prompt = f"<start_of_turn>user\n\n"
-        if request.system_instruction:
-            full_prompt += f"System Instruction: {request.system_instruction}\n\n"
+        if system_inst:
+            full_prompt += f"System Instruction: {system_inst}\n\n"
         
         full_prompt += f"{request.prompt}<end_of_turn>\n\n<start_of_turn>model\n"
 
+
+        print(f"[DEBUG] Full prompt: {full_prompt}")
         # The HuggingFacePipeline wrapper takes a single string input
         response_text = llm_instance.invoke(full_prompt)
         
@@ -239,7 +251,19 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         
         # Strip potential remaining tags if the generation stops abruptly
         ai_response = ai_response.replace("<end_of_turn>", "").strip()
+        
+        # If use_genui is True, wrap the response in GenUI format
+        if request.use_genui:
+            from .genui_schema import create_genui_messages_for_text
+            import json
+            
+            # Create separate BeginRendering and SurfaceUpdate messages
+            genui_messages = create_genui_messages_for_text(ai_response)
+            
+            # Return as JSON array string
+            ai_response = json.dumps(genui_messages)
 
+        print(f"[DEBUG] AI response: {ai_response}")
         return {
             "user_prompt": request.prompt,
             "ai_response": ai_response,
@@ -252,6 +276,7 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
             status_code=500,
             detail=f"Failed to generate response: {e}"
         )
+
 
 
 async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:

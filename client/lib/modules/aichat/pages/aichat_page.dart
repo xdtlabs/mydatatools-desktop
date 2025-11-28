@@ -42,6 +42,20 @@ class _AichatPage extends State<AichatPage> {
       systemInstruction: 'You are a helpful assistant.',
     );
 
+    // Debug: Listen to a2uiMessageStream to see if messages are flowing
+    // This must be done BEFORE creating GenUiConversation
+    contentGenerator.a2uiMessageStream.listen(
+      (message) {
+        logger.d('DEBUG: a2uiMessageStream received message: $message');
+      },
+      onError: (error) {
+        logger.e('DEBUG: a2uiMessageStream error: $error');
+      },
+      onDone: () {
+        logger.d('DEBUG: a2uiMessageStream done');
+      },
+    );
+
     // Listen to text responses from the generator for non-UI messages
     contentGenerator.textResponseStream.listen((text) {
       if (mounted) {
@@ -51,12 +65,26 @@ class _AichatPage extends State<AichatPage> {
       }
     });
 
+    // Debug: Listen to surfaceUpdates directly
+    _genUiManager.surfaceUpdates.listen((event) {
+      logger.d('DEBUG: GenUiManager emitted event: $event');
+    });
+
+    // logger.d('Creating GenUiConversation...');
     _genUiConversation = GenUiConversation(
       genUiManager: _genUiManager,
       contentGenerator: contentGenerator,
       onSurfaceAdded: _onSurfaceAdded,
+      onSurfaceUpdated: (event) {
+        logger.d('SurfaceUpdated event: ${event.surfaceId}');
+        _addSurfaceId(event.surfaceId);
+      },
       onSurfaceDeleted: _onSurfaceDeleted,
+      onError: (error) {
+        logger.e('GenUiConversation error: $error');
+      },
     );
+    // logger.d('GenUiConversation created');
   }
 
   @override
@@ -66,13 +94,23 @@ class _AichatPage extends State<AichatPage> {
     super.dispose();
   }
 
-  void _onSurfaceAdded(SurfaceAdded update) {
-    setState(() {
-      _surfaceIds.add(update.surfaceId);
-    });
+  void _addSurfaceId(String surfaceId) {
+    if (!_surfaceIds.contains(surfaceId)) {
+      setState(() {
+        _surfaceIds.add(surfaceId);
+      });
+      logger.d('Surface added to list: $surfaceId');
+      logger.d('Total surfaces: ${_surfaceIds.length}');
+    }
+  }
+
+  void _onSurfaceAdded(SurfaceAdded event) {
+    logger.d('SurfaceAdded event: ${event.surfaceId}');
+    _addSurfaceId(event.surfaceId);
   }
 
   void _onSurfaceDeleted(SurfaceRemoved update) {
+    logger.d('Surface deleted: ${update.surfaceId}');
     setState(() {
       _surfaceIds.remove(update.surfaceId);
     });
@@ -175,6 +213,7 @@ class _AichatPage extends State<AichatPage> {
                 } else {
                   final surfaceIndex = index - _textMessages.length;
                   final id = _surfaceIds[surfaceIndex];
+                  logger.d('Rendering GenUiSurface for surface: $id');
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: GenUiSurface(

@@ -72,6 +72,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
         body: jsonEncode(<String, dynamic>{
           "prompt": prompt,
           "system_instruction": systemInstruction,
+          "use_genui": true, // Re-enabled GenUI with separate messages
         }),
       );
 
@@ -79,16 +80,42 @@ class LocalLlmContentGenerator implements ContentGenerator {
         final responseData = jsonDecode(response.body);
         final aiResponse = responseData['ai_response'];
 
-        if (aiResponse.trim().startsWith('{') &&
+        logger.d('Received aiResponse type: ${aiResponse.runtimeType}');
+        logger.d('Received aiResponse: $aiResponse');
+
+        if (aiResponse.trim().startsWith('[') &&
+            aiResponse.trim().endsWith(']')) {
+          // GenUI message array
+          try {
+            final List<dynamic> messagesJson = jsonDecode(aiResponse);
+            logger.d('Parsed ${messagesJson.length} GenUI messages');
+
+            // Emit each message to the stream
+            for (final messageJson in messagesJson) {
+              final message = A2uiMessage.fromJson(messageJson);
+              logger.d('Emitting message: ${message.runtimeType}');
+              _a2uiMessageController.add(message);
+            }
+          } catch (e) {
+            logger.e('Failed to parse GenUI message array: $e');
+            _textResponseController.add(aiResponse);
+          }
+        } else if (aiResponse.trim().startsWith('{') &&
             aiResponse.trim().endsWith('}')) {
+          // Single GenUI message (legacy format)
           try {
             final jsonResponse = jsonDecode(aiResponse);
+            logger.d('Parsed JSON successfully: $jsonResponse');
             final message = A2uiMessage.fromJson(jsonResponse);
+            logger.d('Created A2uiMessage, emitting to stream...');
             _a2uiMessageController.add(message);
+            logger.d('A2uiMessage emitted to stream');
           } catch (e) {
+            logger.e('Failed to parse as GenUI JSON: $e');
             _textResponseController.add(aiResponse);
           }
         } else {
+          // Plain text response
           _textResponseController.add(aiResponse);
         }
       } else {

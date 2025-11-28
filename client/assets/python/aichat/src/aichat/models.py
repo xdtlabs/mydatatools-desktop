@@ -19,11 +19,16 @@ class ChatRequest(BaseModel):
     Attributes:
         prompt (str): The user's input message or question
         system_instruction (Optional[str]): Optional system prompt to guide model behavior
+        use_genui (bool): Whether to return response in GenUI JSON format
     """
     prompt: str = Field(..., description="The user's input message or question", min_length=1)
     system_instruction: Optional[str] = Field(
         None, 
         description="Optional system prompt to guide the model's behavior and response style"
+    )
+    use_genui: bool = Field(
+        default=True,
+        description="If True, wrap response in GenUI JSON format for rich UI rendering"
     )
     
     class Config:
@@ -31,7 +36,8 @@ class ChatRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "prompt": "Explain what the difference between a list and a tuple is in Python.",
-                "system_instruction": "You are a concise programming tutor."
+                "system_instruction": "You are a concise programming tutor.",
+                "use_genui": True
             }
         }
 
