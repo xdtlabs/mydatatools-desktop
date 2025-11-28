@@ -11,6 +11,19 @@ class AichatPage extends StatefulWidget {
   State<AichatPage> createState() => _AichatPage();
 }
 
+sealed class ChatItem {}
+
+class TextMessageItem extends ChatItem {
+  final String role;
+  final String text;
+  TextMessageItem({required this.role, required this.text});
+}
+
+class GenUiSurfaceItem extends ChatItem {
+  final String surfaceId;
+  GenUiSurfaceItem({required this.surfaceId});
+}
+
 class _AichatPage extends State<AichatPage> {
   AppLogger logger = AppLogger(null);
   bool _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
@@ -20,8 +33,7 @@ class _AichatPage extends State<AichatPage> {
 
   late final GenUiManager _genUiManager;
   late final GenUiConversation _genUiConversation;
-  final _surfaceIds = <String>[];
-  final _textMessages = <Map<String, String>>[];
+  final List<ChatItem> _chatItems = [];
 
   @override
   void initState() {
@@ -46,28 +58,29 @@ class _AichatPage extends State<AichatPage> {
     // This must be done BEFORE creating GenUiConversation
     contentGenerator.a2uiMessageStream.listen(
       (message) {
-        logger.d('DEBUG: a2uiMessageStream received message: $message');
+        //logger.d('DEBUG: a2uiMessageStream received message: $message');
       },
       onError: (error) {
-        logger.e('DEBUG: a2uiMessageStream error: $error');
+        //logger.e('DEBUG: a2uiMessageStream error: $error');
       },
       onDone: () {
-        logger.d('DEBUG: a2uiMessageStream done');
+        //logger.d('DEBUG: a2uiMessageStream done');
       },
     );
 
     // Listen to text responses from the generator for non-UI messages
     contentGenerator.textResponseStream.listen((text) {
+      logger.d('DEBUG: textResponseStream received: $text');
       if (mounted) {
         setState(() {
-          _textMessages.add({'role': 'assistant', 'text': text});
+          _chatItems.add(TextMessageItem(role: 'assistant', text: text));
         });
       }
     });
 
     // Debug: Listen to surfaceUpdates directly
     _genUiManager.surfaceUpdates.listen((event) {
-      logger.d('DEBUG: GenUiManager emitted event: $event');
+      //logger.d('DEBUG: GenUiManager emitted event: $event');
     });
 
     // logger.d('Creating GenUiConversation...');
@@ -76,7 +89,7 @@ class _AichatPage extends State<AichatPage> {
       contentGenerator: contentGenerator,
       onSurfaceAdded: _onSurfaceAdded,
       onSurfaceUpdated: (event) {
-        logger.d('SurfaceUpdated event: ${event.surfaceId}');
+        //logger.d('SurfaceUpdated event: ${event.surfaceId}');
         _addSurfaceId(event.surfaceId);
       },
       onSurfaceDeleted: _onSurfaceDeleted,
@@ -95,12 +108,17 @@ class _AichatPage extends State<AichatPage> {
   }
 
   void _addSurfaceId(String surfaceId) {
-    if (!_surfaceIds.contains(surfaceId)) {
+    // Check if surface is already in the list
+    final exists = _chatItems.any(
+      (item) => item is GenUiSurfaceItem && item.surfaceId == surfaceId,
+    );
+
+    if (!exists) {
       setState(() {
-        _surfaceIds.add(surfaceId);
+        _chatItems.add(GenUiSurfaceItem(surfaceId: surfaceId));
       });
       logger.d('Surface added to list: $surfaceId');
-      logger.d('Total surfaces: ${_surfaceIds.length}');
+      logger.d('Total items: ${_chatItems.length}');
     }
   }
 
@@ -112,7 +130,10 @@ class _AichatPage extends State<AichatPage> {
   void _onSurfaceDeleted(SurfaceRemoved update) {
     logger.d('Surface deleted: ${update.surfaceId}');
     setState(() {
-      _surfaceIds.remove(update.surfaceId);
+      _chatItems.removeWhere(
+        (item) =>
+            item is GenUiSurfaceItem && item.surfaceId == update.surfaceId,
+      );
     });
   }
 
@@ -128,9 +149,9 @@ class _AichatPage extends State<AichatPage> {
       return;
     }
 
-    // Add user message to text messages
+    // Add user message to chat items
     setState(() {
-      _textMessages.add({'role': 'user', 'text': message});
+      _chatItems.add(TextMessageItem(role: 'user', text: message));
     });
 
     _genUiConversation.sendRequest(UserMessage.text(message));
@@ -175,12 +196,12 @@ class _AichatPage extends State<AichatPage> {
                 right: 16,
                 top: 16,
               ),
-              itemCount: _textMessages.length + _surfaceIds.length,
+              itemCount: _chatItems.length,
               itemBuilder: (context, index) {
-                // Display text messages first, then surfaces
-                if (index < _textMessages.length) {
-                  final msg = _textMessages[index];
-                  final isUser = msg['role'] == 'user';
+                final item = _chatItems[index];
+
+                if (item is TextMessageItem) {
+                  final isUser = item.role == 'user';
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
                     child: Align(
@@ -202,7 +223,7 @@ class _AichatPage extends State<AichatPage> {
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Text(
-                          msg['text'] ?? '',
+                          item.text,
                           style: TextStyle(
                             color: isUser ? Colors.white : Colors.black87,
                           ),
@@ -210,18 +231,17 @@ class _AichatPage extends State<AichatPage> {
                       ),
                     ),
                   );
-                } else {
-                  final surfaceIndex = index - _textMessages.length;
-                  final id = _surfaceIds[surfaceIndex];
-                  logger.d('Rendering GenUiSurface for surface: $id');
+                } else if (item is GenUiSurfaceItem) {
+                  // logger.d('Rendering GenUiSurface for surface: ${item.surfaceId}',);
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: GenUiSurface(
                       host: _genUiConversation.host,
-                      surfaceId: id,
+                      surfaceId: item.surfaceId,
                     ),
                   );
                 }
+                return const SizedBox.shrink();
               },
             ),
           ),

@@ -16,6 +16,10 @@ class LocalLlmContentGenerator implements ContentGenerator {
   final _textResponseController = StreamController<String>.broadcast();
   final _errorController = StreamController<ContentGeneratorError>.broadcast();
   final _isProcessing = ValueNotifier<bool>(false);
+  // We still keep local history for UI purposes if needed, but don't send it to server
+  final List<ChatMessage> _localHistory = [];
+  // Generate a unique session ID for this instance
+  final String _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
   @override
   Stream<A2uiMessage> get a2uiMessageStream => _a2uiMessageController.stream;
@@ -49,19 +53,14 @@ class LocalLlmContentGenerator implements ContentGenerator {
         throw Exception('LLM Service is not running.');
       }
 
+      // We now rely on server-side history. Only send the new user message.
       String prompt = '';
-      if (history != null) {
-        for (var msg in history) {
-          if (msg is UserMessage) {
-            prompt += 'User: ${msg.text}\n';
-          } else if (msg is InternalMessage) {
-            prompt += 'Model: ${msg.text}\n';
-          }
-        }
-      }
 
+      // Add current message
       if (message is UserMessage) {
-        prompt += 'User: ${message.text}\n';
+        // We still use the turn markers for the single turn we are sending
+        prompt += '<start_of_turn>user\n${message.text}<end_of_turn>\n';
+        _localHistory.add(message);
       }
 
       final response = await http.post(
@@ -72,7 +71,8 @@ class LocalLlmContentGenerator implements ContentGenerator {
         body: jsonEncode(<String, dynamic>{
           "prompt": prompt,
           "system_instruction": systemInstruction,
-          "use_genui": true, // Re-enabled GenUI with separate messages
+          "use_genui": true,
+          "session_id": _sessionId, // Send session ID
         }),
       );
 
@@ -81,7 +81,10 @@ class LocalLlmContentGenerator implements ContentGenerator {
         final aiResponse = responseData['ai_response'];
 
         logger.d('Received aiResponse type: ${aiResponse.runtimeType}');
-        logger.d('Received aiResponse: $aiResponse');
+        // logger.d('Received aiResponse: $aiResponse');
+
+        // Add response to local history
+        _localHistory.add(InternalMessage(aiResponse.toString()));
 
         if (aiResponse.trim().startsWith('[') &&
             aiResponse.trim().endsWith(']')) {
@@ -116,6 +119,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
           }
         } else {
           // Plain text response
+          logger.d('Emitting plain text response');
           _textResponseController.add(aiResponse);
         }
       } else {

@@ -31,13 +31,19 @@ class ChatRequest(BaseModel):
         description="If True, wrap response in GenUI JSON format for rich UI rendering"
     )
     
+    session_id: str = Field(
+        ...,
+        description="Unique identifier for the chat session to maintain history"
+    )
+    
     class Config:
         """Configuration for the ChatRequest model with example data."""
         json_schema_extra = {
             "example": {
                 "prompt": "Explain what the difference between a list and a tuple is in Python.",
                 "system_instruction": "You are a concise programming tutor.",
-                "use_genui": True
+                "use_genui": True,
+                "session_id": "123e4567-e89b-12d3-a456-426614174000"
             }
         }
 

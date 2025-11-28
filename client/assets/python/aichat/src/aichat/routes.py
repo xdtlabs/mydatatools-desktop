@@ -219,11 +219,13 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         )
 
     try:
-        # Import GenUI helpers
+        # Import GenUI helpers and ConversationManager
         from .genui_schema import GENUI_SYSTEM_PROMPT
+        from .state import conversation_manager
         
-        # Gemma 2 uses a specific instruction format (BOS/EOS tokens).
-        # We manually construct the prompt to include the system instruction and user query.
+        # Retrieve history for this session
+        history_turns = await conversation_manager.get_history(request.session_id)
+        history_text = "".join(history_turns)
         
         # Build system instruction
         system_inst = request.system_instruction or ""
@@ -231,13 +233,14 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
             # Add GenUI instructions to system prompt
             system_inst = f"{system_inst}\n\n{GENUI_SYSTEM_PROMPT}" if system_inst else GENUI_SYSTEM_PROMPT
         
-        # A common instruction format for Gemma 2
-        full_prompt = f"<start_of_turn>user\n\n"
-        if system_inst:
-            full_prompt += f"System Instruction: {system_inst}\n\n"
-        
-        full_prompt += f"{request.prompt}<end_of_turn>\n\n<start_of_turn>model\n"
+        # Construct the new turn
+        new_turn = f"<start_of_turn>user\n"
+        if system_inst and not history_text: # Only add system instruction to the very first turn
+             new_turn += f"System Instruction: {system_inst}\n\n"
+        new_turn += f"{request.prompt}<end_of_turn>\n<start_of_turn>model\n"
 
+        # Combine history and new turn
+        full_prompt = history_text + new_turn
 
         print(f"[DEBUG] Full prompt: {full_prompt}")
         # The HuggingFacePipeline wrapper takes a single string input
@@ -251,6 +254,9 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         
         # Strip potential remaining tags if the generation stops abruptly
         ai_response = ai_response.replace("<end_of_turn>", "").strip()
+        
+        # Store the new turn in history
+        await conversation_manager.add_turn(request.session_id, request.prompt, ai_response)
         
         # If use_genui is True, wrap the response in GenUI format
         if request.use_genui:
