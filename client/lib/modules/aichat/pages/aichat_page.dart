@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:genui/genui.dart';
+import 'package:json_schema_builder/json_schema_builder.dart';
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/modules/aichat/services/local_llm_content_generator.dart';
+import 'package:mydatatools/modules/aichat/ui/genui_image.dart';
 import 'package:mydatatools/python_manager.dart';
 import 'package:uuid/v4.dart';
 
@@ -65,7 +67,17 @@ class _AichatPage extends State<AichatPage> {
       }
     });
 
-    _genUiManager = GenUiManager(catalog: CoreCatalogItems.asCatalog());
+    _genUiManager = GenUiManager(
+      catalog: CoreCatalogItems.asCatalog().copyWith([
+        CatalogItem(
+          name: 'Image',
+          dataSchema: S.object(),
+          widgetBuilder: (context) {
+            return GenUiImage(component: context.data as Map<String, dynamic>);
+          },
+        ),
+      ]),
+    );
 
     _contentGenerator = LocalLlmContentGenerator(
       systemInstruction: 'You are a helpful assistant.',
@@ -191,10 +203,10 @@ class _AichatPage extends State<AichatPage> {
 
     // Add user message to chat items
     setState(() {
-      _chatItems.add(TextMessageItem(role: 'user', text: message));
+      _chatItems.add(TextMessageItem(role: 'user', text: message.trim()));
     });
 
-    _genUiConversation.sendRequest(UserMessage.text(message));
+    _genUiConversation.sendRequest(UserMessage.text(message.trim()));
     _textController.clear();
   }
 

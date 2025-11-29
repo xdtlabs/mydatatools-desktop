@@ -61,7 +61,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
 
       // Add current message
       if (message is UserMessage) {
-        prompt = message.text;
+        prompt = message.text.trim();
         _localHistory.add(message);
       }
 

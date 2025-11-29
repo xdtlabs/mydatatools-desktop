@@ -93,6 +93,8 @@ class PythonManager {
         environment: {
           'HF_TOKEN': '', //todo pass from client
           'GOOGLE_API_KEY': '', //todo pass from client
+          'OPENAI_API_KEY': '', //todo pass from client
+          'GROK_API_KEY': '', //todo pass from client
           'MODEL_DOWNLOAD_URL':
               'https://gcs-file-downloader-10805446439.us-central1.run.app', // todo get from remote config
         },

@@ -56,7 +56,8 @@ def load_gemini_model(model_name: str = "gemini-2.5-pro") -> ChatGoogleGenerativ
     llm = ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=api_key,
-        temperature=TEMPERATURE,
+        temperature=TEMPERATURE, 
+        max_retries=2
         # convert_system_message_to_human=True # Use if needed for older models
     )
 
@@ -265,9 +266,34 @@ def decode_base64_image(base64_string: str) -> Image.Image:
         
         # Create PIL Image from bytes
         image = Image.open(BytesIO(image_data))
-        
-        # Ensure consistent RGB format for processing
         return image.convert('RGB')
         
     except Exception as e:
         raise ValueError(f"Invalid base64 image data: {e}")
+
+
+def generate_image(prompt: str) -> str:
+    """
+    Generate an image using Gemini 3 Pro Image Preview's built-in Imagen capability.
+    
+    Args:
+        prompt (str): The text prompt for image generation.
+        
+    Returns:
+        str: Base64 encoded image string.
+        
+    Raises:
+        Exception: If image generation fails.
+    """
+    print(f"[IMAGE] Generating image for prompt: {prompt}")
+    
+    # For now, image generation through gemini-3-pro-image-preview is not available
+    # via the LangChain interface. The model exists but requires direct API access
+    # through Vertex AI or the Gen AI SDK with specific configuration.
+    
+    raise Exception(
+        "Image generation is not yet available. The gemini-3-pro-image-preview model "
+        "requires direct Vertex AI API access with specific configuration that is not "
+        "currently supported through the LangChain interface. "
+        "Please use text-based models (gemini-flash or gemini-pro) for now."
+    )

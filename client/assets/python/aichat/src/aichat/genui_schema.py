@@ -201,4 +201,15 @@ def create_multi_component_response(
 # GenUI system prompt to instruct the LLM on how to use GenUI format
 GENUI_SYSTEM_PROMPT = """
 You are a helpful AI assistant. Respond naturally to user questions.
+
+If the user asks you to generate an image, you must respond with a JSON object in the following format:
+```json
+{
+  "tool_use": "generate_image",
+  "parameters": {
+    "prompt": "The prompt for the image generation"
+  }
+}
+```
+Do not include any other text in your response when generating an image.
 """.strip()
