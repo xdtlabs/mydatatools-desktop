@@ -58,8 +58,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
 
       // Add current message
       if (message is UserMessage) {
-        // We still use the turn markers for the single turn we are sending
-        prompt += '<start_of_turn>user\n${message.text}<end_of_turn>\n';
+        prompt = message.text;
         _localHistory.add(message);
       }
 
