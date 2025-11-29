@@ -61,6 +61,9 @@ def load_gemini_model(model_name: str = "gemini-2.5-pro") -> ChatGoogleGenerativ
         # convert_system_message_to_human=True # Use if needed for older models
     )
 
+    # Bind ability to search web tool to the model
+    llm = llm.bind_tools([{"google_search": {}}])
+
     return llm
 
 

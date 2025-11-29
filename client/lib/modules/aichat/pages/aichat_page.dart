@@ -30,8 +30,12 @@ class GenUiSurfaceItem extends ChatItem {
 class _AichatPage extends State<AichatPage> {
   AppLogger logger = AppLogger(null);
   bool _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
-  String _selectedModel = 'Local LLM';
-  final List<String> _models = ['Local LLM', 'gemini-flash', 'gemini-pro'];
+  String _selectedModel = 'google/gemma-3-4b-it';
+  final List<Map<String, String>> _models = [
+    {'label': 'Local LLM', 'value': 'google/gemma-3-4b-it'},
+    {'label': 'Gemini Flash (web)', 'value': 'gemini-2.5-flash'},
+    {'label': 'Gemini Pro (web)', 'value': 'gemini-2.5-pro'},
+  ];
   final _textController = TextEditingController();
 
   late final LocalLlmContentGenerator _contentGenerator;
@@ -51,7 +55,7 @@ class _AichatPage extends State<AichatPage> {
         _contentGenerator
             .startSession(
               sessionId: sessionId,
-              modelName: _getModelName(_selectedModel),
+              modelName: _selectedModel,
               history: [],
             )
             .then((_) {
@@ -146,19 +150,6 @@ class _AichatPage extends State<AichatPage> {
     super.dispose();
   }
 
-  String _getModelName(String selection) {
-    switch (selection) {
-      case 'Local LLM':
-        return 'google/gemma-3-4b-it';
-      case 'gemini-flash':
-        return 'gemini-2.5-flash';
-      case 'gemini-pro':
-        return 'gemini-2.5-pro';
-      default:
-        return 'google/gemma-3-4b-it';
-    }
-  }
-
   void _addSurfaceId(String surfaceId) {
     // Check if surface is already in the list
     final exists = _chatItems.any(
@@ -241,7 +232,7 @@ class _AichatPage extends State<AichatPage> {
               _contentGenerator
                   .startSession(
                     sessionId: sessionId,
-                    modelName: _getModelName(_selectedModel),
+                    modelName: _selectedModel,
                     history: [],
                   )
                   .then((_) {
@@ -380,18 +371,26 @@ class _AichatPage extends State<AichatPage> {
                                 _selectedModel = newValue;
                               });
 
+                              // Get the label for the snackbar message
+                              final selectedModelLabel =
+                                  _models.firstWhere(
+                                    (m) => m['value'] == newValue,
+                                  )['label'];
+
                               // Switch model for current session, preserving history
                               _contentGenerator
                                   .startSession(
                                     sessionId: sessionId,
-                                    modelName: _getModelName(newValue),
+                                    modelName: newValue,
                                     history:
                                         null, // Pass null to preserve history on server
                                   )
                                   .then((_) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Switched to $newValue'),
+                                        content: Text(
+                                          'Switched to $selectedModelLabel',
+                                        ),
                                       ),
                                     );
                                   })
@@ -408,11 +407,11 @@ class _AichatPage extends State<AichatPage> {
                           },
                           items:
                               _models.map<DropdownMenuItem<String>>((
-                                String value,
+                                Map<String, String> model,
                               ) {
                                 return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
+                                  value: model['value'],
+                                  child: Text(model['label']!),
                                 );
                               }).toList(),
                           underline: Container(),
