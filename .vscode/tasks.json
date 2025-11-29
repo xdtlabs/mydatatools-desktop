@@ -4,7 +4,7 @@
         {
             "label": "clean app dir",
             "type": "shell",
-            "command": "rm -fr '/Users/mikenimer/Library/Application Support/mydata.tools' && rm -fr client/app/*.zip",
+"command": "rm -fr '${env:HOME}/Library/Application Support/mydata.tools' && rm -fr client/app/*.zip",
             "problemMatcher": []
         },
         {
