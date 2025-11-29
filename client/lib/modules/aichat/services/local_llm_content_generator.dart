@@ -83,7 +83,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
         final responseData = jsonDecode(response.body);
         final aiResponse = responseData['ai_response'];
 
-        logger.d('Received aiResponse type: ${aiResponse.runtimeType}');
+        // logger.d('Received aiResponse type: ${aiResponse.runtimeType}');
         // logger.d('Received aiResponse: $aiResponse');
 
         // Add response to local history
@@ -143,7 +143,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
   Future<void> startSession({
     required String sessionId,
     String modelName = 'google/gemma-3-4b-it',
-    List<String>? history = const [],
+    List<String>? history,
   }) async {
     try {
       String? llmServiceUrl = MainApp.llmServiceUrl.valueOrNull;
@@ -154,16 +154,21 @@ class LocalLlmContentGenerator implements ContentGenerator {
       // Update the internal session ID
       _sessionId = sessionId;
 
+      final Map<String, dynamic> body = {
+        "model_name": modelName,
+        "session_id": sessionId,
+      };
+
+      if (history != null) {
+        body["history"] = history;
+      }
+
       final response = await http.post(
         Uri.parse("$llmServiceUrl/start-session"),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
-        body: jsonEncode(<String, dynamic>{
-          "model_name": modelName,
-          "session_id": sessionId,
-          "history": history ?? [],
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode != 200) {
@@ -171,7 +176,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
         throw Exception('Failed to start session: ${response.statusCode}');
       }
 
-      logger.d('Session started successfully: $_sessionId');
+      ('Session started successfully: $_sessionId');
     } catch (e) {
       logger.e('Error starting session: $e');
       rethrow;

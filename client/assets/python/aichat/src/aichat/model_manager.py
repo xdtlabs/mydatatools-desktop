@@ -28,7 +28,7 @@ from .config import MODEL_DTYPE, MAX_NEW_TOKENS, TEMPERATURE, DO_SAMPLE
 from .utils import get_local_path, download_model_if_needed
 
 
-def load_gemini_model() -> ChatGoogleGenerativeAI:
+def load_gemini_model(model_name: str = "gemini-2.5-pro") -> ChatGoogleGenerativeAI:
     """
     Initializes a connection to the Google Gemini API.
 
@@ -37,8 +37,7 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     variable to be set.
 
     Args:
-        local_path (str): This argument is no longer used but kept for
-                          interface compatibility.
+        model_name (str): The name of the Gemini model to use (e.g., "gemini-2.5-pro", "gemini-2.5-flash").
 
     Returns:
         ChatGoogleGenerativeAI: An instance of the LangChain Google AI chat model.
@@ -46,7 +45,7 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     Raises:
         ValueError: If the GOOGLE_API_KEY environment variable is not set.
     """
-    print("[LOADER] Initializing Google Gemini client.")
+    print(f"[LOADER] Initializing Google Gemini client with model: {model_name}")
 
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
@@ -55,7 +54,7 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     # Initialize the ChatGoogleGenerativeAI client
     # You can specify other parameters like temperature, top_p, etc.
     llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro-latest",
+        model=model_name,
         google_api_key=api_key,
         temperature=TEMPERATURE,
         # convert_system_message_to_human=True # Use if needed for older models

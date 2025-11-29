@@ -18,6 +18,9 @@ except ImportError:
 llm_instance: Optional[HuggingFacePipeline] = None
 current_model_id: Optional[str] = None
 
+# Store the model name for each session
+session_models: Dict[str, str] = {}
+
 # Global variables for embedding model (separate from chat model)
 embedding_model: Optional[Any] = None
 embedding_processor: Optional[Any] = None
@@ -85,6 +88,20 @@ def set_current_model_id(model_id: Optional[str]) -> None:
     """
     global current_model_id
     current_model_id = model_id
+
+
+def get_session_model(session_id: str) -> Optional[str]:
+    """
+    Get the model name associated with a specific session.
+    """
+    return session_models.get(session_id)
+
+
+def set_session_model(session_id: str, model_name: str) -> None:
+    """
+    Set the model name for a specific session.
+    """
+    session_models[session_id] = model_name
 
 
 def get_embedding_model() -> Tuple[Optional[Any], Optional[Any]]:

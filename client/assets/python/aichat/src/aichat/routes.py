@@ -25,7 +25,9 @@ from .state import (
     get_current_model_id, set_current_model_id,
     get_embedding_model, set_embedding_model,
     get_embedding_model_id, set_embedding_model_id,
-    get_locks
+    get_embedding_model_id, set_embedding_model_id,
+    get_locks,
+    get_session_model, set_session_model
 )
 
 
@@ -105,6 +107,36 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
     print(f"[STARTUP] start session with model {model_id}")
 
     # 1. Check if the requested model is already loaded
+    # Store the model preference for this session
+    if request.session_id:
+        print(f"[SESSION] Setting model for session {request.session_id} to {model_id}")
+        set_session_model(request.session_id, model_id)
+        
+    if model_id.startswith("gemini"):
+        # For Gemini models, we don't need to download/load heavy local models
+        # Just ensure we can instantiate the client (check API key)
+        try:
+            # We don't set the global llm_instance for Gemini to avoid overwriting local model state
+            # unless we want to enforce single-model-at-a-time globally.
+            # But the requirement implies per-session switching.
+            # So we just verify we can load it.
+            load_gemini_model(model_name=model_id)
+            
+            # Initialize history if provided
+            if request.session_id:
+                from .state import conversation_manager
+                if request.history is not None:
+                    await conversation_manager.set_history(request.session_id, request.history)
+            
+            return {
+                "status": "success", 
+                "message": f"Session started with Gemini model: {model_id}",
+                "model": model_id,
+                "local_path": None
+            }
+        except Exception as e:
+             raise HTTPException(status_code=500, detail=f"Failed to initialize Gemini model: {e}")
+
     if get_current_model_id() == model_id:
         # Even if model is loaded, we might need to initialize/clear history for the session
         if request.session_id:
@@ -114,6 +146,7 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
                 print(f"[SESSION] Initialized history for session {request.session_id} with {len(request.history)} turns.")
         
         return {"status": "success", "message": f"Session already active with model: {model_id}", "model": model_id}
+
 
     # Use a lock to prevent multiple model loading attempts concurrently
     async with model_lock:
@@ -159,8 +192,10 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
             set_llm_instance(None)
             set_current_model_id(None)
 
-            if model_id == "gemini":
-                new_llm = load_gemini_model()
+            if model_id.startswith("gemini"):
+                # This path shouldn't be reached if we handled gemini above, 
+                # but keeping for safety or if logic changes.
+                new_llm = load_gemini_model(model_id)
             else:
                 new_llm = load_local_model(local_path)
             
@@ -230,13 +265,29 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         ... ))
         >>> print(response["ai_response"])
     """
-    llm_instance = get_llm_instance()
+    session_model = get_session_model(request.session_id)
+    print(f"[CHAT] Request for session {request.session_id}. Session model: {session_model}")
     
-    if llm_instance is None:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No active model session. Please call the /start-session endpoint first, e.g., using model_name: 'google/gemma-3-4b-it'."
-        )
+    # Determine which LLM to use
+    llm_to_use = None
+    
+    if session_model and session_model.startswith("gemini"):
+        # Instantiate Gemini client on the fly
+        print(f"[CHAT] Using Gemini model: {session_model}")
+        try:
+            llm_to_use = load_gemini_model(model_name=session_model)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to load Gemini model: {e}")
+    else:
+        # Use local model
+        print(f"[CHAT] Using Local model (session_model={session_model})")
+        llm_instance = get_llm_instance()
+        if llm_instance is None:
+            raise HTTPException(
+                status_code=503,
+                detail=f"No active model session. Please call the /start-session endpoint first."
+            )
+        llm_to_use = llm_instance
 
     try:
         # Import GenUI helpers and ConversationManager
@@ -263,17 +314,27 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         full_prompt = history_text + new_turn
 
         print(f"[DEBUG] Full prompt: {full_prompt}")
-        # The HuggingFacePipeline wrapper takes a single string input
-        response_text = llm_instance.invoke(full_prompt)
         
-        # The model output includes the input prompt, so we strip it out.
-        if full_prompt in response_text:
-            ai_response = response_text.split(full_prompt, 1)[-1].strip()
+        # Invoke the model
+        response_text = llm_to_use.invoke(full_prompt)
+        
+        # Handle response parsing based on model type
+        if session_model and session_model.startswith("gemini"):
+             # Gemini response is usually an AIMessage object or string depending on invoke result
+             # ChatGoogleGenerativeAI.invoke returns an AIMessage
+             if hasattr(response_text, 'content'):
+                 ai_response = response_text.content
+             else:
+                 ai_response = str(response_text)
         else:
-            ai_response = response_text.strip()
-        
-        # Strip potential remaining tags if the generation stops abruptly
-        ai_response = ai_response.replace("<end_of_turn>", "").strip()
+            # Local model output includes the input prompt, so we strip it out.
+            if full_prompt in response_text:
+                ai_response = response_text.split(full_prompt, 1)[-1].strip()
+            else:
+                ai_response = response_text.strip()
+            
+            # Strip potential remaining tags if the generation stops abruptly
+            ai_response = ai_response.replace("<end_of_turn>", "").strip()
         
         # Store the new turn in history
         await conversation_manager.add_turn(request.session_id, request.prompt, ai_response)
