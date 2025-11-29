@@ -24,11 +24,11 @@ def get_local_path(model_id: str) -> str:
         
     Example:
         >>> get_local_path("google/gemma-3-4b-it")
-        './google-gemma-3-4b-it-local/'
+        './models/google-gemma-3-4b-it-local/'
     """
     # Use a sanitized version of the model ID for the directory name
     safe_model_name = model_id.replace("/", "-")
-    return f"./{safe_model_name}-local/"
+    return f"./models/{safe_model_name}-local/"
 
 
 def get_local_zip_path(model_id: str) -> str:
@@ -46,11 +46,11 @@ def get_local_zip_path(model_id: str) -> str:
         
     Example:
         >>> get_local_zip_path("google/gemma-3-4b-it")
-        './google-gemma-3-4b-it-local.tar.gz'
+        './models/google-gemma-3-4b-it-local.tar.gz'
     """
     # Use a sanitized version of the model ID for the directory name
     safe_model_name = model_id.replace("/", "-")
-    return f"./{safe_model_name}-local.tar.gz"
+    return f"./models/{safe_model_name}-local.tar.gz"
 
 
 def handle_local_archive(archive_path: str, target_dir: str) -> bool:

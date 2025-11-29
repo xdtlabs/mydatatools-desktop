@@ -44,7 +44,7 @@ class PythonManager {
     await ensureAichatUnzipped().then((_) => completer.complete());
 
     final supportDir = await getApplicationSupportDirectory();
-    _pythonDir = p.join(supportDir.path, "aichat/aichat");
+    _pythonDir = p.join(supportDir.path, "aichat");
 
     // Check for existing PID file and kill previous process if it exists
     final pidFile = File(p.join(_pythonDir!, 'aichat.pid'));
@@ -108,7 +108,6 @@ class PythonManager {
 
       await _pipeOutput(_pythonProc!);
 
-      `//Start default session
       MainApp.llmServiceUrl.listen((llmServiceUrl) async {
         if (llmServiceUrl != null) {
           final session = await http.post(
@@ -262,19 +261,25 @@ class PythonManager {
         return;
       }
 
-      _stdoutController.add('Unzipping `$zipPath` -> `${destDir.path}`');
-      destDir.createSync(recursive: true);
+      final tempDir = Directory(p.join(supportDir.path, 'aichat_temp'));
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+      tempDir.createSync(recursive: true);
+
+      _stdoutController.add('Unzipping `$zipPath` -> `${tempDir.path}`');
 
       if (Platform.isWindows) {
         // On Windows, use PowerShell to expand the archive
         final result = await Process.run('powershell', [
           '-command',
-          'Expand-Archive -Path "$zipPath" -DestinationPath "${destDir.path}" -Force',
+          'Expand-Archive -Path "$zipPath" -DestinationPath "${tempDir.path}" -Force',
         ]);
         if (result.exitCode != 0) {
           _stderrController.add(
             'Expand-Archive failed (exit ${result.exitCode}): ${result.stderr}',
           );
+          return;
         } else {
           _stdoutController.add('Unzip completed via PowerShell');
         }
@@ -284,16 +289,38 @@ class PythonManager {
           '-o',
           zipPath,
           '-d',
-          destDir.path,
+          tempDir.path,
         ]);
         if (result.exitCode != 0) {
           _stderrController.add(
             'unzip failed (exit ${result.exitCode}): ${result.stderr}',
           );
+          return;
         } else {
           final out = (result.stdout ?? '').toString();
           _stdoutController.add('Unzip completed: ${out.trim()}');
         }
+      }
+
+      // Check contents of tempDir
+      final contents =
+          tempDir.listSync().where((e) {
+            final name = p.basename(e.path);
+            return !name.startsWith('__') && !name.startsWith('.');
+          }).toList();
+
+      if (contents.length == 1 && contents.first is Directory) {
+        // It's a nested folder structure (e.g. aichat-macos/), move it to destDir
+        final nestedDir = contents.first as Directory;
+        _stdoutController.add(
+          'Moving nested folder `${nestedDir.path}` to `${destDir.path}`',
+        );
+        nestedDir.renameSync(destDir.path);
+        tempDir.deleteSync(recursive: true);
+      } else {
+        // Flat structure, rename tempDir to destDir
+        _stdoutController.add('Moving `${tempDir.path}` to `${destDir.path}`');
+        tempDir.renameSync(destDir.path);
       }
     } catch (e) {
       _stderrController.add('Exception while unzipping aichat bundle: $e');
