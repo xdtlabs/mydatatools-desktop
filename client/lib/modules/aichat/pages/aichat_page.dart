@@ -35,6 +35,7 @@ class _AichatPage extends State<AichatPage> {
     {'label': 'Local LLM', 'value': 'google/gemma-3-4b-it'},
     {'label': 'Gemini Flash (web)', 'value': 'gemini-2.5-flash'},
     {'label': 'Gemini Pro (web)', 'value': 'gemini-2.5-pro'},
+    {'label': 'Gemini 3 Pro (Image)', 'value': 'gemini-3-pro-images'},
   ];
   final _textController = TextEditingController();
 

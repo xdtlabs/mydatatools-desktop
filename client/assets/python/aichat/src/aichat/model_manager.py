@@ -275,12 +275,13 @@ def decode_base64_image(base64_string: str) -> Image.Image:
         raise ValueError(f"Invalid base64 image data: {e}")
 
 
-def generate_image(prompt: str) -> str:
+def generate_image(prompt: str, model_name: str = None) -> str:
     """
-    Generate an image using Gemini 3 Pro Image Preview's built-in Imagen capability.
+    Generate an image using Google's Imagen model.
     
     Args:
         prompt (str): The text prompt for image generation.
+        model_name (str, optional): The name of the model session requesting the image.
         
     Returns:
         str: Base64 encoded image string.
@@ -288,15 +289,47 @@ def generate_image(prompt: str) -> str:
     Raises:
         Exception: If image generation fails.
     """
-    print(f"[IMAGE] Generating image for prompt: {prompt}")
+    print(f"[IMAGE] Generating image for prompt: {prompt} (model: {model_name})")
     
-    # For now, image generation through gemini-3-pro-image-preview is not available
-    # via the LangChain interface. The model exists but requires direct API access
-    # through Vertex AI or the Gen AI SDK with specific configuration.
-    
-    raise Exception(
-        "Image generation is not yet available. The gemini-3-pro-image-preview model "
-        "requires direct Vertex AI API access with specific configuration that is not "
-        "currently supported through the LangChain interface. "
-        "Please use text-based models (gemini-flash or gemini-pro) for now."
-    )
+    # If the user explicitly selected the Gemini 3 Pro Images model, 
+    # we can try to use it (or fail with the specific message if not supported via this SDK yet)
+    if model_name == "gemini-3-pro-images":
+        raise Exception(
+            "Image generation with gemini-3-pro-images requires direct Vertex AI API access "
+            "which is not currently configured. Please use a different model or standard image generation."
+        )
+
+    # For all other models (or if no model specified), use Imagen 3
+    try:
+        import google.generativeai as genai
+        import os
+        
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY environment variable not set.")
+            
+        genai.configure(api_key=api_key)
+        
+        # Use Imagen 3 model
+        imagen_model = genai.ImageGenerationModel.from_pretrained("imagen-3.0-generate-001")
+        
+        images = imagen_model.generate_images(
+            prompt=prompt,
+            number_of_images=1,
+        )
+        
+        if not images:
+            raise Exception("No images generated.")
+            
+        # Convert the first image to base64
+        # images[0] is a generated image object, usually has ._image_bytes or similar?
+        # The SDK returns an object that can be saved or bytes retrieved.
+        # Let's check how to get bytes/base64 from it.
+        # Usually images[0].bytes is the raw bytes.
+        
+        image_bytes = images[0].bytes
+        return base64.b64encode(image_bytes).decode('utf-8')
+        
+    except Exception as e:
+        print(f"[ERROR] Image generation failed: {e}")
+        raise Exception(f"Failed to generate image: {e}")

@@ -340,8 +340,66 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         # Store the new turn in history
         await conversation_manager.add_turn(request.session_id, request.prompt, ai_response)
         
-        # If use_genui is True, wrap the response in GenUI format
-        if request.use_genui:
+        # Check for tool use BEFORE wrapping in GenUI text component
+        # Use ai_response which has the prompt stripped out
+        clean_response = ai_response.strip()
+        
+        # Handle markdown code blocks if present
+        if "```json" in clean_response:
+            clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_response:
+            clean_response = clean_response.split("```")[1].split("```")[0].strip()
+            
+        tool_use_handled = False
+        
+        if clean_response.startswith("{") and clean_response.endswith("}"):
+            try:
+                import json
+                response_json = json.loads(clean_response)
+                if response_json.get("tool_use") == "generate_image":
+                    prompt = response_json.get("parameters", {}).get("prompt")
+                    if prompt:
+                        print(f"[TOOL] Generating image for prompt: {prompt}")
+                        try:
+                            image_base64 = generate_image(prompt, session_model)
+                            # Create GenUI Image component
+                            from .genui_schema import create_image_component, create_surface_id, create_begin_rendering_message, create_surface_update_message
+                            
+                            # Construct GenUI message for image
+                            surface_id = create_surface_id()
+                            image_component = create_image_component(
+                                url=f"data:image/png;base64,{image_base64}",
+                                alt_text=prompt
+                            )
+                            
+                            component_wrapper = {
+                                "id": "root",
+                                "component": image_component
+                            }
+                            
+                            genui_messages = [
+                                create_begin_rendering_message(surface_id, "root"),
+                                create_surface_update_message(surface_id, [component_wrapper])
+                            ]
+                            
+                            ai_response = json.dumps(genui_messages)
+                            tool_use_handled = True
+                            
+                        except Exception as e:
+                            print(f"[ERROR] Tool execution failed: {e}")
+                            if request.use_genui:
+                                from .genui_schema import create_genui_messages_for_text
+                                ai_response = json.dumps(create_genui_messages_for_text(f"Failed to generate image: {e}"))
+                                tool_use_handled = True
+                            else:
+                                ai_response = f"Failed to generate image: {e}"
+                                tool_use_handled = True
+            except Exception as e:
+                print(f"[DEBUG] JSON parse error or not a tool use: {e}")
+                pass
+
+        # If use_genui is True and we haven't handled it as a tool use, wrap the text response
+        if request.use_genui and not tool_use_handled:
             from .genui_schema import create_genui_messages_for_text
             import json
             
@@ -350,71 +408,6 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
             
             # Return as JSON array string
             ai_response = json.dumps(genui_messages)
-
-            # Check for tool use in the response
-            try:
-                # Extract the actual text from the response
-                clean_response = response_text
-                if hasattr(response_text, 'content'):
-                    clean_response = response_text.content
-                
-                # Handle case where content is a list of parts (new Gemini format)
-                if isinstance(clean_response, list):
-                    # Extract text from the list of content parts
-                    text_parts = []
-                    for part in clean_response:
-                        if isinstance(part, dict) and 'text' in part:
-                            text_parts.append(part['text'])
-                        elif hasattr(part, 'text'):
-                            text_parts.append(part.text)
-                    clean_response = ''.join(text_parts)
-                
-                # Now clean_response should be a string
-                clean_response = clean_response.strip()
-                if "```json" in clean_response:
-                    clean_response = clean_response.split("```json")[1].split("```")[0].strip()
-                elif "```" in clean_response:
-                    clean_response = clean_response.split("```")[1].split("```")[0].strip()
-                
-                if clean_response.startswith("{") and clean_response.endswith("}"):
-                    response_json = json.loads(clean_response)
-                    if response_json.get("tool_use") == "generate_image":
-                        prompt = response_json.get("parameters", {}).get("prompt")
-                        if prompt:
-                            print(f"[TOOL] Generating image for prompt: {prompt}")
-                            try:
-                                image_base64 = generate_image(prompt)
-                                # Create GenUI Image component
-                                from .genui_schema import create_image_component, create_genui_messages_for_text, create_surface_id, create_begin_rendering_message, create_surface_update_message
-                                
-                                # We want to return the image component
-                                # Construct GenUI message for image
-                                surface_id = create_surface_id()
-                                image_component = create_image_component(
-                                    url=f"data:image/png;base64,{image_base64}",
-                                    alt_text=prompt
-                                )
-                                
-                                component_wrapper = {
-                                    "id": "root",
-                                    "component": image_component
-                                }
-                                
-                                genui_messages = [
-                                    create_begin_rendering_message(surface_id, "root"),
-                                    create_surface_update_message(surface_id, [component_wrapper])
-                                ]
-                                
-                                ai_response = json.dumps(genui_messages)
-                                
-                            except Exception as e:
-                                print(f"[ERROR] Tool execution failed: {e}")
-                                # Fallback to error message
-                                ai_response = json.dumps(create_genui_messages_for_text(f"Failed to generate image: {e}"))
-            except Exception as e:
-                # Not a tool use or failed to parse, ignore
-                print(f"[DEBUG] Not a tool use response or parse error: {e}")
-                pass
 
         print(f"[DEBUG] AI response: {ai_response}")
         return {
