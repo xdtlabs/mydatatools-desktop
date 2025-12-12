@@ -349,6 +349,11 @@ LazyDatabase _openConnection(String? path, String? name, bool useMemoryDb) {
         setup: (database) {
           database.execute('PRAGMA journal_mode=WAL;');
           database.execute('PRAGMA busy_timeout=5000;');
+          database.execute('PRAGMA synchronous = NORMAL;');
+          database.execute('PRAGMA cache_size = -20000;'); // ~20MB
+          database.execute('PRAGMA foreign_keys = ON;');
+          database.execute('PRAGMA temp_store = MEMORY;');
+          database.execute('PRAGMA mmap_size = 30000000000;');
         },
       );
       //return NativeDatabase.createInBackground(file, logStatements: true, cachePreparedStatements: true, setup: null);
