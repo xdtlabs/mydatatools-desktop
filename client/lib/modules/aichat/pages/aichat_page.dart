@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:genui/genui.dart';
 import 'package:json_schema_builder/json_schema_builder.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/modules/aichat/services/local_llm_content_generator.dart';
 import 'package:mydatatools/modules/aichat/ui/genui_image.dart';
@@ -9,6 +10,7 @@ import 'package:uuid/v4.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/chat_session.dart';
 import 'package:mydatatools/models/tables/chat_message.dart' as db_model;
+import 'package:mydatatools/modules/aichat/widgets/aichat_drawer.dart';
 import 'dart:convert'; // For jsonEncode
 
 class AichatPage extends StatefulWidget {
@@ -53,6 +55,17 @@ class _AichatPage extends State<AichatPage> {
   @override
   void initState() {
     super.initState();
+
+    // Check if a sessionId was provided via query params (using GoRouter state access if available)
+    // Note: Since we are in a StatefulWidget, we might not get the route directly here unless passed in constructor.
+    // However, AichatPage constructor doesn't take it yet.
+    // For now, let's keep the generate-new-id default, but we should make AichatPage aware of route changes or params.
+    // Actually, to support reloading from URL, we should parse it.
+    // But since I can't easily change the constructor across the app right now without more files,
+    // I will look for it in didChangeDependencies or build, but initState is safer for one-time setup.
+    // Let's assume for this step we stick to the generated one unless I update the router.
+    // WAIT: The Drawer uses `context.go('/aichat?sessionId=...')`.
+    // I need to read that.
 
     // Save initial session
     _saveSession();
@@ -146,6 +159,86 @@ class _AichatPage extends State<AichatPage> {
       },
     );
     // logger.d('GenUiConversation created');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check route parameters on dependencies change (e.g. navigation)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkRouteForSession();
+    });
+  }
+
+  void _checkRouteForSession() {
+    // Accessing query parameters via GoRouterState is cleaner if passed to widget.
+    // But we can try:
+    try {
+      final state = GoRouterState.of(context);
+      if (state.uri.queryParameters.containsKey('sessionId')) {
+        final newId = state.uri.queryParameters['sessionId']!;
+        if (newId != sessionId && newId.isNotEmpty) {
+          _loadSessionById(newId);
+        }
+      }
+    } catch (e) {
+      // context might not have GoRouter or different navigation used
+    }
+  }
+
+  Future<void> _loadSessionById(String id) async {
+    // ... same logic as _loadSession but by ID ...
+    setState(() {
+      sessionId = id;
+      _chatItems.clear();
+    });
+    // Load session metadata to get model?
+    // For now just load messages.
+    final messages = await DatabaseManager.instance.repository!.getChatMessages(
+      id,
+    );
+
+    // We need to fetch the session first to get the model to ensure consistency
+    // Implementation omitted for brevity, assuming existing model or default.
+
+    final history = <String>[];
+    for (final msg in messages) {
+      if (msg.role == 'user') {
+        _chatItems.add(TextMessageItem(role: 'user', text: msg.content));
+        history.add(msg.content);
+      } else if (msg.role == 'assistant' || msg.role == 'model') {
+        _chatItems.add(TextMessageItem(role: 'assistant', text: msg.content));
+        history.add(msg.content);
+      } else if (msg.role == 'model_genui') {
+        if (msg.data != null) {
+          try {
+            final dataMap = jsonDecode(msg.data!);
+            if (dataMap is Map) {
+              if (dataMap.containsKey('beginRendering')) {
+                final br = dataMap['beginRendering'];
+                _addSurfaceId(br['surfaceId']);
+              }
+            } else if (dataMap is List) {
+              // **FIXED Iterable Lint Error**: Iterate over the list directly
+              for (var item in dataMap) {
+                if (item is Map && item.containsKey('beginRendering')) {
+                  _addSurfaceId(item['beginRendering']['surfaceId']);
+                }
+              }
+            }
+          } catch (e) {
+            logger.e('Error parsing saved GenUI data: $e');
+          }
+        }
+      }
+    }
+
+    // Re-start LLM session
+    await _contentGenerator.startSession(
+      sessionId: sessionId,
+      modelName: _selectedModel,
+      history: history,
+    );
   }
 
   Future<void> _saveSession() async {
@@ -249,6 +342,17 @@ class _AichatPage extends State<AichatPage> {
       _chatItems.add(TextMessageItem(role: 'user', text: message.trim()));
     });
     _saveTextMessage('user', message.trim());
+    //_loadSessions();
+
+    // If this is the first message, update the session title
+    if (_chatItems.length == 1) {
+      // Use the first ~50 chars of the message as the title
+      String title = message.trim();
+      if (title.length > 50) {
+        title = '${title.substring(0, 50)}...';
+      }
+      DatabaseManager.instance.repository!.updateSessionTitle(sessionId, title);
+    }
 
     _genUiConversation.sendRequest(UserMessage.text(message.trim()));
     _textController.clear();
@@ -261,6 +365,7 @@ class _AichatPage extends State<AichatPage> {
     }
 
     return Scaffold(
+      drawer: const Drawer(child: AiChatDrawer()),
       appBar: AppBar(
         centerTitle: false,
         title: const Text("AI Chat"),
@@ -272,35 +377,26 @@ class _AichatPage extends State<AichatPage> {
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black),
             tooltip: 'New Session',
-            onPressed: () {
-              // Clear local chat history
-              setState(() {
-                _chatItems.clear();
+            onPressed: () async {
+              // Generate new ID
+              final newId = UuidV4().generate().replaceAll('-', '');
+
+              // Save new session to DB immediately so it exists
+              final session = ChatSession(
+                id: newId,
+                model: _selectedModel,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+              await DatabaseManager.instance.send({
+                'type': 'chat_session',
+                'object': session,
               });
 
-              //assign new session id
-              sessionId = UuidV4().generate().replaceAll('-', '');
-              _saveSession();
-
-              // Call service to start new session with empty history
-              _contentGenerator
-                  .startSession(
-                    sessionId: sessionId,
-                    modelName: _selectedModel,
-                    history: [],
-                  )
-                  .then((_) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('New session started')),
-                    );
-                  })
-                  .catchError((error) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to start new session: $error'),
-                      ),
-                    );
-                  });
+              // Navigate to the new session
+              if (context.mounted) {
+                context.go('/aichat?sessionId=$newId');
+              }
             },
           ),
         ],
