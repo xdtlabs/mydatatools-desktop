@@ -25,6 +25,7 @@ import 'package:mydatatools/models/tables/file.dart';
 import 'package:mydatatools/models/tables/folder.dart';
 import 'package:uuid/uuid.dart';
 import 'package:mydatatools/models/tables/chat_session.dart';
+import 'package:mydatatools/models/tables/chat_message.dart';
 
 part 'database_manager.g.dart';
 
@@ -300,6 +301,7 @@ class DatabaseManager {
     Folders,
     Albums,
     ChatSessions,
+    ChatMessages,
   ],
 )
 class AppDatabase extends _$AppDatabase {

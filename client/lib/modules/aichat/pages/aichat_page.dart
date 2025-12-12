@@ -6,6 +6,10 @@ import 'package:mydatatools/modules/aichat/services/local_llm_content_generator.
 import 'package:mydatatools/modules/aichat/ui/genui_image.dart';
 import 'package:mydatatools/python_manager.dart';
 import 'package:uuid/v4.dart';
+import 'package:mydatatools/database_manager.dart';
+import 'package:mydatatools/models/tables/chat_session.dart';
+import 'package:mydatatools/models/tables/chat_message.dart' as db_model;
+import 'dart:convert'; // For jsonEncode
 
 class AichatPage extends StatefulWidget {
   const AichatPage({super.key});
@@ -49,6 +53,9 @@ class _AichatPage extends State<AichatPage> {
   @override
   void initState() {
     super.initState();
+
+    // Save initial session
+    _saveSession();
 
     // listen for changes
     PythonManager.isLLMServiceRunning.addListener(() {
@@ -97,17 +104,14 @@ class _AichatPage extends State<AichatPage> {
       }
     });
 
-    // Debug: Listen to a2uiMessageStream to see if messages are flowing
-    // This must be done BEFORE creating GenUiConversation
-    _contentGenerator.a2uiMessageStream.listen(
-      (message) {
-        //logger.d('DEBUG: a2uiMessageStream received message: $message');
+    // Listen to raw GenUI messages for saving to DB
+    _contentGenerator.rawGenUiMessageStream.listen(
+      (messageJson) {
+        //logger.d('DEBUG: rawGenUiMessageStream received: $messageJson');
+        _saveGenUiMessage(messageJson);
       },
       onError: (error) {
-        //logger.e('DEBUG: a2uiMessageStream error: $error');
-      },
-      onDone: () {
-        //logger.d('DEBUG: a2uiMessageStream done');
+        //logger.e('DEBUG: rawGenUiMessageStream error: $error');
       },
     );
 
@@ -118,6 +122,7 @@ class _AichatPage extends State<AichatPage> {
         setState(() {
           _chatItems.add(TextMessageItem(role: 'assistant', text: text));
         });
+        _saveTextMessage('assistant', text);
       }
     });
 
@@ -141,6 +146,52 @@ class _AichatPage extends State<AichatPage> {
       },
     );
     // logger.d('GenUiConversation created');
+  }
+
+  Future<void> _saveSession() async {
+    final session = ChatSession(
+      id: sessionId,
+      model: _selectedModel,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await DatabaseManager.instance.send({
+      'type': 'chat_session',
+      'object': session,
+    });
+  }
+
+  Future<void> _saveTextMessage(String role, String text) async {
+    final message = db_model.ChatMessage(
+      id: UuidV4().generate(),
+      sessionId: sessionId,
+      role: role,
+      content: text,
+      createdAt: DateTime.now(),
+    );
+    await DatabaseManager.instance.send({
+      'type': 'chat_message',
+      'object': message,
+    });
+  }
+
+  Future<void> _saveGenUiMessage(dynamic messageData) async {
+    // messageData is likely the raw message from LLM or backend.
+    // We save it as a message with role 'genui_data' or similar if it's not a standard role,
+    // or just 'model' with data payload.
+    // Assuming messageData can be JSON encoded.
+    final message = db_model.ChatMessage(
+      id: UuidV4().generate(),
+      sessionId: sessionId,
+      role: 'model_genui', // Distinguish from plain text
+      content: 'GenUI Data',
+      data: jsonEncode(messageData),
+      createdAt: DateTime.now(),
+    );
+    await DatabaseManager.instance.send({
+      'type': 'chat_message',
+      'object': message,
+    });
   }
 
   @override
@@ -197,6 +248,7 @@ class _AichatPage extends State<AichatPage> {
     setState(() {
       _chatItems.add(TextMessageItem(role: 'user', text: message.trim()));
     });
+    _saveTextMessage('user', message.trim());
 
     _genUiConversation.sendRequest(UserMessage.text(message.trim()));
     _textController.clear();
@@ -228,6 +280,7 @@ class _AichatPage extends State<AichatPage> {
 
               //assign new session id
               sessionId = UuidV4().generate().replaceAll('-', '');
+              _saveSession();
 
               // Call service to start new session with empty history
               _contentGenerator

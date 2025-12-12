@@ -16,6 +16,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
   }) : _sessionId = sessionId;
 
   final _a2uiMessageController = StreamController<A2uiMessage>.broadcast();
+  final _rawGenUiMessageController = StreamController<dynamic>.broadcast();
   final _textResponseController = StreamController<String>.broadcast();
   final _errorController = StreamController<ContentGeneratorError>.broadcast();
   final _isProcessing = ValueNotifier<bool>(false);
@@ -26,6 +27,9 @@ class LocalLlmContentGenerator implements ContentGenerator {
 
   @override
   Stream<A2uiMessage> get a2uiMessageStream => _a2uiMessageController.stream;
+
+  Stream<dynamic> get rawGenUiMessageStream =>
+      _rawGenUiMessageController.stream;
 
   @override
   Stream<ContentGeneratorError> get errorStream => _errorController.stream;
@@ -39,6 +43,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
   @override
   void dispose() {
     _a2uiMessageController.close();
+    _rawGenUiMessageController.close();
     _textResponseController.close();
     _errorController.close();
     _isProcessing.dispose();
@@ -97,6 +102,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
 
             // Emit each message to the stream
             for (final messageJson in messagesJson) {
+              _rawGenUiMessageController.add(messageJson);
               final message = A2uiMessage.fromJson(messageJson);
               //logger.d('Emitting message: ${message.runtimeType}');
               _a2uiMessageController.add(message);
@@ -111,6 +117,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
           try {
             final jsonResponse = jsonDecode(aiResponse);
             logger.d('Parsed JSON successfully: $jsonResponse');
+            _rawGenUiMessageController.add(jsonResponse);
             final message = A2uiMessage.fromJson(jsonResponse);
             logger.d('Created A2uiMessage, emitting to stream...');
             _a2uiMessageController.add(message);

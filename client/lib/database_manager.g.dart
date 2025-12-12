@@ -2938,6 +2938,296 @@ class ChatSessionsCompanion extends UpdateCompanion<ChatSession> {
   }
 }
 
+class $ChatMessagesTable extends ChatMessages
+    with TableInfo<$ChatMessagesTable, ChatMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES chat_sessions (id)',
+    ),
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sessionId,
+    role,
+    content,
+    data,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chat_messages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChatMessage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChatMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChatMessage.fromDb(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      sessionId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}session_id'],
+          )!,
+      role:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}role'],
+          )!,
+      content:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}content'],
+          )!,
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+    );
+  }
+
+  @override
+  $ChatMessagesTable createAlias(String alias) {
+    return $ChatMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
+  final Value<String> id;
+  final Value<String> sessionId;
+  final Value<String> role;
+  final Value<String> content;
+  final Value<String?> data;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const ChatMessagesCompanion({
+    this.id = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.data = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChatMessagesCompanion.insert({
+    required String id,
+    required String sessionId,
+    required String role,
+    required String content,
+    this.data = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       sessionId = Value(sessionId),
+       role = Value(role),
+       content = Value(content);
+  static Insertable<ChatMessage> custom({
+    Expression<String>? id,
+    Expression<String>? sessionId,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<String>? data,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sessionId != null) 'session_id': sessionId,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (data != null) 'data': data,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChatMessagesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? sessionId,
+    Value<String>? role,
+    Value<String>? content,
+    Value<String?>? data,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return ChatMessagesCompanion(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      data: data ?? this.data,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('data: $data, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2949,6 +3239,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FoldersTable folders = $FoldersTable(this);
   late final $AlbumsTable albums = $AlbumsTable(this);
   late final $ChatSessionsTable chatSessions = $ChatSessionsTable(this);
+  late final $ChatMessagesTable chatMessages = $ChatMessagesTable(this);
   late final Index collectionsIdIdx = Index(
     'collections_id_idx',
     'CREATE INDEX collections_id_idx ON collections (id)',
@@ -3018,6 +3309,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     folders,
     albums,
     chatSessions,
+    chatMessages,
     collectionsIdIdx,
     collectionsPathIdx,
     collectionsTypeIdx,
@@ -4986,6 +5278,32 @@ typedef $$ChatSessionsTableUpdateCompanionBuilder =
       Value<int> rowid,
     });
 
+final class $$ChatSessionsTableReferences
+    extends BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession> {
+  $$ChatSessionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$ChatMessagesTable, List<ChatMessage>>
+  _chatMessagesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.chatMessages,
+    aliasName: $_aliasNameGenerator(
+      db.chatSessions.id,
+      db.chatMessages.sessionId,
+    ),
+  );
+
+  $$ChatMessagesTableProcessedTableManager get chatMessagesRefs {
+    final manager = $$ChatMessagesTableTableManager(
+      $_db,
+      $_db.chatMessages,
+    ).filter((f) => f.sessionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_chatMessagesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
 class $$ChatSessionsTableFilterComposer
     extends Composer<_$AppDatabase, $ChatSessionsTable> {
   $$ChatSessionsTableFilterComposer({
@@ -5019,6 +5337,31 @@ class $$ChatSessionsTableFilterComposer
     column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> chatMessagesRefs(
+    Expression<bool> Function($$ChatMessagesTableFilterComposer f) f,
+  ) {
+    final $$ChatMessagesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.chatMessages,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatMessagesTableFilterComposer(
+            $db: $db,
+            $table: $db.chatMessages,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ChatSessionsTableOrderingComposer
@@ -5079,6 +5422,31 @@ class $$ChatSessionsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> chatMessagesRefs<T extends Object>(
+    Expression<T> Function($$ChatMessagesTableAnnotationComposer a) f,
+  ) {
+    final $$ChatMessagesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.chatMessages,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatMessagesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.chatMessages,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ChatSessionsTableTableManager
@@ -5092,12 +5460,9 @@ class $$ChatSessionsTableTableManager
           $$ChatSessionsTableAnnotationComposer,
           $$ChatSessionsTableCreateCompanionBuilder,
           $$ChatSessionsTableUpdateCompanionBuilder,
-          (
-            ChatSession,
-            BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>,
-          ),
+          (ChatSession, $$ChatSessionsTableReferences),
           ChatSession,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool chatMessagesRefs})
         > {
   $$ChatSessionsTableTableManager(_$AppDatabase db, $ChatSessionsTable table)
     : super(
@@ -5149,11 +5514,43 @@ class $$ChatSessionsTableTableManager
                       .map(
                         (e) => (
                           e.readTable(table),
-                          BaseReferences(db, table, e),
+                          $$ChatSessionsTableReferences(db, table, e),
                         ),
                       )
                       .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({chatMessagesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (chatMessagesRefs) db.chatMessages],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (chatMessagesRefs)
+                    await $_getPrefetchedData<
+                      ChatSession,
+                      $ChatSessionsTable,
+                      ChatMessage
+                    >(
+                      currentTable: table,
+                      referencedTable: $$ChatSessionsTableReferences
+                          ._chatMessagesRefsTable(db),
+                      managerFromTypedResult:
+                          (p0) =>
+                              $$ChatSessionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).chatMessagesRefs,
+                      referencedItemsForCurrentItem:
+                          (item, referencedItems) => referencedItems.where(
+                            (e) => e.sessionId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -5168,12 +5565,350 @@ typedef $$ChatSessionsTableProcessedTableManager =
       $$ChatSessionsTableAnnotationComposer,
       $$ChatSessionsTableCreateCompanionBuilder,
       $$ChatSessionsTableUpdateCompanionBuilder,
-      (
-        ChatSession,
-        BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>,
-      ),
+      (ChatSession, $$ChatSessionsTableReferences),
       ChatSession,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool chatMessagesRefs})
+    >;
+typedef $$ChatMessagesTableCreateCompanionBuilder =
+    ChatMessagesCompanion Function({
+      required String id,
+      required String sessionId,
+      required String role,
+      required String content,
+      Value<String?> data,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$ChatMessagesTableUpdateCompanionBuilder =
+    ChatMessagesCompanion Function({
+      Value<String> id,
+      Value<String> sessionId,
+      Value<String> role,
+      Value<String> content,
+      Value<String?> data,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$ChatMessagesTableReferences
+    extends BaseReferences<_$AppDatabase, $ChatMessagesTable, ChatMessage> {
+  $$ChatMessagesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ChatSessionsTable _sessionIdTable(_$AppDatabase db) =>
+      db.chatSessions.createAlias(
+        $_aliasNameGenerator(db.chatMessages.sessionId, db.chatSessions.id),
+      );
+
+  $$ChatSessionsTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$ChatSessionsTableTableManager(
+      $_db,
+      $_db.chatSessions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ChatMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $ChatMessagesTable> {
+  $$ChatMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ChatSessionsTableFilterComposer get sessionId {
+    final $$ChatSessionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.chatSessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatSessionsTableFilterComposer(
+            $db: $db,
+            $table: $db.chatSessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChatMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChatMessagesTable> {
+  $$ChatMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ChatSessionsTableOrderingComposer get sessionId {
+    final $$ChatSessionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.chatSessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatSessionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.chatSessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChatMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChatMessagesTable> {
+  $$ChatMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ChatSessionsTableAnnotationComposer get sessionId {
+    final $$ChatSessionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.chatSessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChatSessionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.chatSessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChatMessagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChatMessagesTable,
+          ChatMessage,
+          $$ChatMessagesTableFilterComposer,
+          $$ChatMessagesTableOrderingComposer,
+          $$ChatMessagesTableAnnotationComposer,
+          $$ChatMessagesTableCreateCompanionBuilder,
+          $$ChatMessagesTableUpdateCompanionBuilder,
+          (ChatMessage, $$ChatMessagesTableReferences),
+          ChatMessage,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$ChatMessagesTableTableManager(_$AppDatabase db, $ChatMessagesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ChatMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$ChatMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$ChatMessagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<String?> data = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChatMessagesCompanion(
+                id: id,
+                sessionId: sessionId,
+                role: role,
+                content: content,
+                data: data,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String sessionId,
+                required String role,
+                required String content,
+                Value<String?> data = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChatMessagesCompanion.insert(
+                id: id,
+                sessionId: sessionId,
+                role: role,
+                content: content,
+                data: data,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          $$ChatMessagesTableReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                T extends TableManagerState<
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic
+                >
+              >(state) {
+                if (sessionId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.sessionId,
+                            referencedTable: $$ChatMessagesTableReferences
+                                ._sessionIdTable(db),
+                            referencedColumn:
+                                $$ChatMessagesTableReferences
+                                    ._sessionIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ChatMessagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChatMessagesTable,
+      ChatMessage,
+      $$ChatMessagesTableFilterComposer,
+      $$ChatMessagesTableOrderingComposer,
+      $$ChatMessagesTableAnnotationComposer,
+      $$ChatMessagesTableCreateCompanionBuilder,
+      $$ChatMessagesTableUpdateCompanionBuilder,
+      (ChatMessage, $$ChatMessagesTableReferences),
+      ChatMessage,
+      PrefetchHooks Function({bool sessionId})
     >;
 
 class $AppDatabaseManager {
@@ -5194,4 +5929,6 @@ class $AppDatabaseManager {
       $$AlbumsTableTableManager(_db, _db.albums);
   $$ChatSessionsTableTableManager get chatSessions =>
       $$ChatSessionsTableTableManager(_db, _db.chatSessions);
+  $$ChatMessagesTableTableManager get chatMessages =>
+      $$ChatMessagesTableTableManager(_db, _db.chatMessages);
 }
