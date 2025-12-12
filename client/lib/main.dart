@@ -141,6 +141,12 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
 
       // set database repository
       MainApp.databaseManager = DatabaseManager.instance;
+
+      // Attempt daily backup
+      // We run this without awaiting so it doesn't block UI startup if it takes a few seconds
+      DatabaseManager.instance.createDailyBackup().catchError((e) {
+        Logger().e("Failed to create daily backup", error: e);
+      });
       //set python manager
       pythonManager = await pythonFuture;
 

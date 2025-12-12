@@ -166,6 +166,47 @@ class DatabaseManager {
     ScannerManager.getInstance().startScanners(appDatabase!);
   }
 
+  /// Backups the database to the specified path using VACUUM INTO.
+  /// This creates a transactionally consistent copy of the database.
+  Future<void> backupDatabase(String path) async {
+    if (appDatabase == null) {
+      throw Exception("Database not initialized");
+    }
+    await appDatabase!.backup(path);
+  }
+
+  /// Creates a daily backup in the 'backups' subdirectory of the data location.
+  /// It is safe to call this on every startup; it will only perform the backup
+  /// if one has not already been created for the current day.
+  Future<void> createDailyBackup() async {
+    // Determine backup directory
+    String configPath = await _getConfigPath();
+    // configPath points to the config file (e.g. .../config.json).
+    // We want the directory containing the actual data, which we read from the config.
+    io.File file = io.File(configPath);
+    var config = jsonDecode(file.readAsStringSync());
+    String dbRootPath = config['path'];
+
+    // Backup folder: <dbRootPath>/backups
+    final backupDir = io.Directory(p.join(dbRootPath, 'backups'));
+    if (!backupDir.existsSync()) {
+      backupDir.createSync(recursive: true);
+    }
+
+    // Filename: backup_YYYY-MM-DD.db
+    final now = DateTime.now();
+    final dateString = now.toIso8601DateString();
+    final backupFileName = 'backup_$dateString.db';
+    final backupFile = io.File(p.join(backupDir.path, backupFileName));
+
+    if (!backupFile.existsSync()) {
+      print("Creating daily backup: ${backupFile.path}");
+      await backupDatabase(backupFile.path);
+    } else {
+      print("Daily backup already exists: ${backupFile.path}");
+    }
+  }
+
   /// Send a message to the isolate and await a response.
   Future<dynamic> send(Map<String, dynamic> message) async {
     if (_writerPort == null) {
@@ -320,6 +361,24 @@ class AppDatabase extends _$AppDatabase {
       logger.e(err);
       rethrow;
     }
+  }
+
+  /// Creates a backup of the database at the specified [path].
+  /// Uses SQLite `VACUUM INTO` to create a safe, consistent backup
+  /// even while the database is being written to (in WAL mode).
+  Future<void> backup(String path) async {
+    // VACUUM INTO fails if the target file already exists
+    final file = io.File(path);
+    if (file.existsSync()) {
+      await file.delete();
+    }
+    await customStatement('VACUUM INTO ?', [path]);
+  }
+}
+
+extension DateTimeFormat on DateTime {
+  String toIso8601DateString() {
+    return toIso8601String().split('T')[0];
   }
 }
 
