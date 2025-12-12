@@ -24,6 +24,7 @@ import 'package:mydatatools/models/tables/email.dart';
 import 'package:mydatatools/models/tables/file.dart';
 import 'package:mydatatools/models/tables/folder.dart';
 import 'package:uuid/uuid.dart';
+import 'package:mydatatools/models/tables/chat_session.dart';
 
 part 'database_manager.g.dart';
 
@@ -290,7 +291,16 @@ class DatabaseManager {
 }
 
 @DriftDatabase(
-  tables: [Apps, AppUsers, Collections, Emails, Files, Folders, Albums],
+  tables: [
+    Apps,
+    AppUsers,
+    Collections,
+    Emails,
+    Files,
+    Folders,
+    Albums,
+    ChatSessions,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   final AppLogger logger = AppLogger(null);

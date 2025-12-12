@@ -188,6 +188,7 @@ class $AppsTable extends Apps with TableInfo<$AppsTable, App> {
     );
   }
 
+  @override
   $AppsTable createAlias(String alias) {
     return $AppsTable(attachedDatabase, alias);
   }
@@ -1190,7 +1191,6 @@ class $EmailsTable extends Emails with TableInfo<$EmailsTable, Email> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _toMeta = const VerificationMeta('to');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> to =
       GeneratedColumn<String>(
@@ -1200,7 +1200,6 @@ class $EmailsTable extends Emails with TableInfo<$EmailsTable, Email> {
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<List<String>>($EmailsTable.$converterto);
-  static const VerificationMeta _ccMeta = const VerificationMeta('cc');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> cc =
       GeneratedColumn<String>(
@@ -1254,7 +1253,6 @@ class $EmailsTable extends Emails with TableInfo<$EmailsTable, Email> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _labelsMeta = const VerificationMeta('labels');
   @override
   late final GeneratedColumnWithTypeConverter<List<String>, String> labels =
       GeneratedColumn<String>(
@@ -1350,8 +1348,6 @@ class $EmailsTable extends Emails with TableInfo<$EmailsTable, Email> {
     } else if (isInserting) {
       context.missing(_fromMeta);
     }
-    context.handle(_toMeta, const VerificationResult.success());
-    context.handle(_ccMeta, const VerificationResult.success());
     if (data.containsKey('subject')) {
       context.handle(
         _subjectMeta,
@@ -1376,7 +1372,6 @@ class $EmailsTable extends Emails with TableInfo<$EmailsTable, Email> {
         plainBody.isAcceptableOrUnknown(data['plain_body']!, _plainBodyMeta),
       );
     }
-    context.handle(_labelsMeta, const VerificationResult.success());
     if (data.containsKey('headers')) {
       context.handle(
         _headersMeta,
@@ -2699,8 +2694,253 @@ class AlbumsCompanion extends UpdateCompanion<Album> {
   }
 }
 
+class $ChatSessionsTable extends ChatSessions
+    with TableInfo<$ChatSessionsTable, ChatSession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modelMeta = const VerificationMeta('model');
+  @override
+  late final GeneratedColumn<String> model = GeneratedColumn<String>(
+    'model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    model,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chat_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChatSession> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('model')) {
+      context.handle(
+        _modelMeta,
+        model.isAcceptableOrUnknown(data['model']!, _modelMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChatSession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChatSession.fromDb(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
+      model: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model'],
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $ChatSessionsTable createAlias(String alias) {
+    return $ChatSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class ChatSessionsCompanion extends UpdateCompanion<ChatSession> {
+  final Value<String> id;
+  final Value<String?> title;
+  final Value<String?> model;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ChatSessionsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.model = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChatSessionsCompanion.insert({
+    required String id,
+    this.title = const Value.absent(),
+    this.model = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id);
+  static Insertable<ChatSession> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? model,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (model != null) 'model': model,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChatSessionsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? title,
+    Value<String?>? model,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ChatSessionsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      model: model ?? this.model,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (model.present) {
+      map['model'] = Variable<String>(model.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatSessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('model: $model, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
+  $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AppsTable apps = $AppsTable(this);
   late final $AppUsersTable appUsers = $AppUsersTable(this);
   late final $CollectionsTable collections = $CollectionsTable(this);
@@ -2708,6 +2948,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FilesTable files = $FilesTable(this);
   late final $FoldersTable folders = $FoldersTable(this);
   late final $AlbumsTable albums = $AlbumsTable(this);
+  late final $ChatSessionsTable chatSessions = $ChatSessionsTable(this);
   late final Index collectionsIdIdx = Index(
     'collections_id_idx',
     'CREATE INDEX collections_id_idx ON collections (id)',
@@ -2776,6 +3017,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     files,
     folders,
     albums,
+    chatSessions,
     collectionsIdIdx,
     collectionsPathIdx,
     collectionsTypeIdx,
@@ -2791,4 +3033,2165 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     folderParentIdx,
     folderCollectionIdIdx,
   ];
+}
+
+typedef $$AppsTableCreateCompanionBuilder =
+    AppsCompanion Function({
+      required String id,
+      required String name,
+      required String slug,
+      Value<String> group,
+      Value<int> order,
+      Value<int?> icon,
+      Value<String> route,
+      Value<int> rowid,
+    });
+typedef $$AppsTableUpdateCompanionBuilder =
+    AppsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> slug,
+      Value<String> group,
+      Value<int> order,
+      Value<int?> icon,
+      Value<String> route,
+      Value<int> rowid,
+    });
+
+class $$AppsTableFilterComposer extends Composer<_$AppDatabase, $AppsTable> {
+  $$AppsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get slug => $composableBuilder(
+    column: $table.slug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get group => $composableBuilder(
+    column: $table.group,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get order => $composableBuilder(
+    column: $table.order,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get route => $composableBuilder(
+    column: $table.route,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppsTableOrderingComposer extends Composer<_$AppDatabase, $AppsTable> {
+  $$AppsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get slug => $composableBuilder(
+    column: $table.slug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get group => $composableBuilder(
+    column: $table.group,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get order => $composableBuilder(
+    column: $table.order,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get route => $composableBuilder(
+    column: $table.route,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppsTable> {
+  $$AppsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get slug =>
+      $composableBuilder(column: $table.slug, builder: (column) => column);
+
+  GeneratedColumn<String> get group =>
+      $composableBuilder(column: $table.group, builder: (column) => column);
+
+  GeneratedColumn<int> get order =>
+      $composableBuilder(column: $table.order, builder: (column) => column);
+
+  GeneratedColumn<int> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<String> get route =>
+      $composableBuilder(column: $table.route, builder: (column) => column);
+}
+
+class $$AppsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AppsTable,
+          App,
+          $$AppsTableFilterComposer,
+          $$AppsTableOrderingComposer,
+          $$AppsTableAnnotationComposer,
+          $$AppsTableCreateCompanionBuilder,
+          $$AppsTableUpdateCompanionBuilder,
+          (App, BaseReferences<_$AppDatabase, $AppsTable, App>),
+          App,
+          PrefetchHooks Function()
+        > {
+  $$AppsTableTableManager(_$AppDatabase db, $AppsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$AppsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$AppsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$AppsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> slug = const Value.absent(),
+                Value<String> group = const Value.absent(),
+                Value<int> order = const Value.absent(),
+                Value<int?> icon = const Value.absent(),
+                Value<String> route = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppsCompanion(
+                id: id,
+                name: name,
+                slug: slug,
+                group: group,
+                order: order,
+                icon: icon,
+                route: route,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String slug,
+                Value<String> group = const Value.absent(),
+                Value<int> order = const Value.absent(),
+                Value<int?> icon = const Value.absent(),
+                Value<String> route = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppsCompanion.insert(
+                id: id,
+                name: name,
+                slug: slug,
+                group: group,
+                order: order,
+                icon: icon,
+                route: route,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AppsTable,
+      App,
+      $$AppsTableFilterComposer,
+      $$AppsTableOrderingComposer,
+      $$AppsTableAnnotationComposer,
+      $$AppsTableCreateCompanionBuilder,
+      $$AppsTableUpdateCompanionBuilder,
+      (App, BaseReferences<_$AppDatabase, $AppsTable, App>),
+      App,
+      PrefetchHooks Function()
+    >;
+typedef $$AppUsersTableCreateCompanionBuilder =
+    AppUsersCompanion Function({
+      required String id,
+      required String name,
+      required String email,
+      required String password,
+      required String localStoragePath,
+      Value<int> rowid,
+    });
+typedef $$AppUsersTableUpdateCompanionBuilder =
+    AppUsersCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> email,
+      Value<String> password,
+      Value<String> localStoragePath,
+      Value<int> rowid,
+    });
+
+class $$AppUsersTableFilterComposer
+    extends Composer<_$AppDatabase, $AppUsersTable> {
+  $$AppUsersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get password => $composableBuilder(
+    column: $table.password,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localStoragePath => $composableBuilder(
+    column: $table.localStoragePath,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppUsersTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppUsersTable> {
+  $$AppUsersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get password => $composableBuilder(
+    column: $table.password,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localStoragePath => $composableBuilder(
+    column: $table.localStoragePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppUsersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppUsersTable> {
+  $$AppUsersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get password =>
+      $composableBuilder(column: $table.password, builder: (column) => column);
+
+  GeneratedColumn<String> get localStoragePath => $composableBuilder(
+    column: $table.localStoragePath,
+    builder: (column) => column,
+  );
+}
+
+class $$AppUsersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AppUsersTable,
+          AppUser,
+          $$AppUsersTableFilterComposer,
+          $$AppUsersTableOrderingComposer,
+          $$AppUsersTableAnnotationComposer,
+          $$AppUsersTableCreateCompanionBuilder,
+          $$AppUsersTableUpdateCompanionBuilder,
+          (AppUser, BaseReferences<_$AppDatabase, $AppUsersTable, AppUser>),
+          AppUser,
+          PrefetchHooks Function()
+        > {
+  $$AppUsersTableTableManager(_$AppDatabase db, $AppUsersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$AppUsersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$AppUsersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$AppUsersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String> password = const Value.absent(),
+                Value<String> localStoragePath = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppUsersCompanion(
+                id: id,
+                name: name,
+                email: email,
+                password: password,
+                localStoragePath: localStoragePath,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String email,
+                required String password,
+                required String localStoragePath,
+                Value<int> rowid = const Value.absent(),
+              }) => AppUsersCompanion.insert(
+                id: id,
+                name: name,
+                email: email,
+                password: password,
+                localStoragePath: localStoragePath,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppUsersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AppUsersTable,
+      AppUser,
+      $$AppUsersTableFilterComposer,
+      $$AppUsersTableOrderingComposer,
+      $$AppUsersTableAnnotationComposer,
+      $$AppUsersTableCreateCompanionBuilder,
+      $$AppUsersTableUpdateCompanionBuilder,
+      (AppUser, BaseReferences<_$AppDatabase, $AppUsersTable, AppUser>),
+      AppUser,
+      PrefetchHooks Function()
+    >;
+typedef $$CollectionsTableCreateCompanionBuilder =
+    CollectionsCompanion Function({
+      required String id,
+      required String name,
+      required String path,
+      required String type,
+      required String scanner,
+      required String scanStatus,
+      Value<String?> oauthService,
+      Value<String?> accessToken,
+      Value<String?> refreshToken,
+      Value<String?> idToken,
+      Value<String?> userId,
+      Value<DateTime?> expiration,
+      Value<DateTime?> lastScanDate,
+      required bool needsReAuth,
+      Value<int> rowid,
+    });
+typedef $$CollectionsTableUpdateCompanionBuilder =
+    CollectionsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> path,
+      Value<String> type,
+      Value<String> scanner,
+      Value<String> scanStatus,
+      Value<String?> oauthService,
+      Value<String?> accessToken,
+      Value<String?> refreshToken,
+      Value<String?> idToken,
+      Value<String?> userId,
+      Value<DateTime?> expiration,
+      Value<DateTime?> lastScanDate,
+      Value<bool> needsReAuth,
+      Value<int> rowid,
+    });
+
+class $$CollectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $CollectionsTable> {
+  $$CollectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scanner => $composableBuilder(
+    column: $table.scanner,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scanStatus => $composableBuilder(
+    column: $table.scanStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get oauthService => $composableBuilder(
+    column: $table.oauthService,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get refreshToken => $composableBuilder(
+    column: $table.refreshToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get idToken => $composableBuilder(
+    column: $table.idToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expiration => $composableBuilder(
+    column: $table.expiration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastScanDate => $composableBuilder(
+    column: $table.lastScanDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsReAuth => $composableBuilder(
+    column: $table.needsReAuth,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CollectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CollectionsTable> {
+  $$CollectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scanner => $composableBuilder(
+    column: $table.scanner,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scanStatus => $composableBuilder(
+    column: $table.scanStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get oauthService => $composableBuilder(
+    column: $table.oauthService,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get refreshToken => $composableBuilder(
+    column: $table.refreshToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get idToken => $composableBuilder(
+    column: $table.idToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expiration => $composableBuilder(
+    column: $table.expiration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastScanDate => $composableBuilder(
+    column: $table.lastScanDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get needsReAuth => $composableBuilder(
+    column: $table.needsReAuth,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CollectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CollectionsTable> {
+  $$CollectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get scanner =>
+      $composableBuilder(column: $table.scanner, builder: (column) => column);
+
+  GeneratedColumn<String> get scanStatus => $composableBuilder(
+    column: $table.scanStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get oauthService => $composableBuilder(
+    column: $table.oauthService,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get refreshToken => $composableBuilder(
+    column: $table.refreshToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get idToken =>
+      $composableBuilder(column: $table.idToken, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get expiration => $composableBuilder(
+    column: $table.expiration,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastScanDate => $composableBuilder(
+    column: $table.lastScanDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get needsReAuth => $composableBuilder(
+    column: $table.needsReAuth,
+    builder: (column) => column,
+  );
+}
+
+class $$CollectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CollectionsTable,
+          Collection,
+          $$CollectionsTableFilterComposer,
+          $$CollectionsTableOrderingComposer,
+          $$CollectionsTableAnnotationComposer,
+          $$CollectionsTableCreateCompanionBuilder,
+          $$CollectionsTableUpdateCompanionBuilder,
+          (
+            Collection,
+            BaseReferences<_$AppDatabase, $CollectionsTable, Collection>,
+          ),
+          Collection,
+          PrefetchHooks Function()
+        > {
+  $$CollectionsTableTableManager(_$AppDatabase db, $CollectionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$CollectionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$CollectionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$CollectionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> scanner = const Value.absent(),
+                Value<String> scanStatus = const Value.absent(),
+                Value<String?> oauthService = const Value.absent(),
+                Value<String?> accessToken = const Value.absent(),
+                Value<String?> refreshToken = const Value.absent(),
+                Value<String?> idToken = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
+                Value<DateTime?> expiration = const Value.absent(),
+                Value<DateTime?> lastScanDate = const Value.absent(),
+                Value<bool> needsReAuth = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CollectionsCompanion(
+                id: id,
+                name: name,
+                path: path,
+                type: type,
+                scanner: scanner,
+                scanStatus: scanStatus,
+                oauthService: oauthService,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+                idToken: idToken,
+                userId: userId,
+                expiration: expiration,
+                lastScanDate: lastScanDate,
+                needsReAuth: needsReAuth,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String path,
+                required String type,
+                required String scanner,
+                required String scanStatus,
+                Value<String?> oauthService = const Value.absent(),
+                Value<String?> accessToken = const Value.absent(),
+                Value<String?> refreshToken = const Value.absent(),
+                Value<String?> idToken = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
+                Value<DateTime?> expiration = const Value.absent(),
+                Value<DateTime?> lastScanDate = const Value.absent(),
+                required bool needsReAuth,
+                Value<int> rowid = const Value.absent(),
+              }) => CollectionsCompanion.insert(
+                id: id,
+                name: name,
+                path: path,
+                type: type,
+                scanner: scanner,
+                scanStatus: scanStatus,
+                oauthService: oauthService,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+                idToken: idToken,
+                userId: userId,
+                expiration: expiration,
+                lastScanDate: lastScanDate,
+                needsReAuth: needsReAuth,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CollectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CollectionsTable,
+      Collection,
+      $$CollectionsTableFilterComposer,
+      $$CollectionsTableOrderingComposer,
+      $$CollectionsTableAnnotationComposer,
+      $$CollectionsTableCreateCompanionBuilder,
+      $$CollectionsTableUpdateCompanionBuilder,
+      (
+        Collection,
+        BaseReferences<_$AppDatabase, $CollectionsTable, Collection>,
+      ),
+      Collection,
+      PrefetchHooks Function()
+    >;
+typedef $$EmailsTableCreateCompanionBuilder =
+    EmailsCompanion Function({
+      required String id,
+      required String collectionId,
+      required DateTime date,
+      required String from,
+      required List<String> to,
+      required List<String> cc,
+      Value<String?> subject,
+      Value<String?> snippet,
+      Value<String?> htmlBody,
+      Value<String?> plainBody,
+      required List<String> labels,
+      Value<String?> headers,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+typedef $$EmailsTableUpdateCompanionBuilder =
+    EmailsCompanion Function({
+      Value<String> id,
+      Value<String> collectionId,
+      Value<DateTime> date,
+      Value<String> from,
+      Value<List<String>> to,
+      Value<List<String>> cc,
+      Value<String?> subject,
+      Value<String?> snippet,
+      Value<String?> htmlBody,
+      Value<String?> plainBody,
+      Value<List<String>> labels,
+      Value<String?> headers,
+      Value<bool> isDeleted,
+      Value<int> rowid,
+    });
+
+class $$EmailsTableFilterComposer
+    extends Composer<_$AppDatabase, $EmailsTable> {
+  $$EmailsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get from => $composableBuilder(
+    column: $table.from,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String> get to =>
+      $composableBuilder(
+        column: $table.to,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String> get cc =>
+      $composableBuilder(
+        column: $table.cc,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get snippet => $composableBuilder(
+    column: $table.snippet,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get htmlBody => $composableBuilder(
+    column: $table.htmlBody,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plainBody => $composableBuilder(
+    column: $table.plainBody,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+  get labels => $composableBuilder(
+    column: $table.labels,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get headers => $composableBuilder(
+    column: $table.headers,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$EmailsTableOrderingComposer
+    extends Composer<_$AppDatabase, $EmailsTable> {
+  $$EmailsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get from => $composableBuilder(
+    column: $table.from,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get to => $composableBuilder(
+    column: $table.to,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cc => $composableBuilder(
+    column: $table.cc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get snippet => $composableBuilder(
+    column: $table.snippet,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get htmlBody => $composableBuilder(
+    column: $table.htmlBody,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plainBody => $composableBuilder(
+    column: $table.plainBody,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get labels => $composableBuilder(
+    column: $table.labels,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get headers => $composableBuilder(
+    column: $table.headers,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$EmailsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EmailsTable> {
+  $$EmailsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get from =>
+      $composableBuilder(column: $table.from, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get to =>
+      $composableBuilder(column: $table.to, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get cc =>
+      $composableBuilder(column: $table.cc, builder: (column) => column);
+
+  GeneratedColumn<String> get subject =>
+      $composableBuilder(column: $table.subject, builder: (column) => column);
+
+  GeneratedColumn<String> get snippet =>
+      $composableBuilder(column: $table.snippet, builder: (column) => column);
+
+  GeneratedColumn<String> get htmlBody =>
+      $composableBuilder(column: $table.htmlBody, builder: (column) => column);
+
+  GeneratedColumn<String> get plainBody =>
+      $composableBuilder(column: $table.plainBody, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<String>, String> get labels =>
+      $composableBuilder(column: $table.labels, builder: (column) => column);
+
+  GeneratedColumn<String> get headers =>
+      $composableBuilder(column: $table.headers, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+}
+
+class $$EmailsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EmailsTable,
+          Email,
+          $$EmailsTableFilterComposer,
+          $$EmailsTableOrderingComposer,
+          $$EmailsTableAnnotationComposer,
+          $$EmailsTableCreateCompanionBuilder,
+          $$EmailsTableUpdateCompanionBuilder,
+          (Email, BaseReferences<_$AppDatabase, $EmailsTable, Email>),
+          Email,
+          PrefetchHooks Function()
+        > {
+  $$EmailsTableTableManager(_$AppDatabase db, $EmailsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$EmailsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$EmailsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$EmailsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> collectionId = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String> from = const Value.absent(),
+                Value<List<String>> to = const Value.absent(),
+                Value<List<String>> cc = const Value.absent(),
+                Value<String?> subject = const Value.absent(),
+                Value<String?> snippet = const Value.absent(),
+                Value<String?> htmlBody = const Value.absent(),
+                Value<String?> plainBody = const Value.absent(),
+                Value<List<String>> labels = const Value.absent(),
+                Value<String?> headers = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EmailsCompanion(
+                id: id,
+                collectionId: collectionId,
+                date: date,
+                from: from,
+                to: to,
+                cc: cc,
+                subject: subject,
+                snippet: snippet,
+                htmlBody: htmlBody,
+                plainBody: plainBody,
+                labels: labels,
+                headers: headers,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String collectionId,
+                required DateTime date,
+                required String from,
+                required List<String> to,
+                required List<String> cc,
+                Value<String?> subject = const Value.absent(),
+                Value<String?> snippet = const Value.absent(),
+                Value<String?> htmlBody = const Value.absent(),
+                Value<String?> plainBody = const Value.absent(),
+                required List<String> labels,
+                Value<String?> headers = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EmailsCompanion.insert(
+                id: id,
+                collectionId: collectionId,
+                date: date,
+                from: from,
+                to: to,
+                cc: cc,
+                subject: subject,
+                snippet: snippet,
+                htmlBody: htmlBody,
+                plainBody: plainBody,
+                labels: labels,
+                headers: headers,
+                isDeleted: isDeleted,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$EmailsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EmailsTable,
+      Email,
+      $$EmailsTableFilterComposer,
+      $$EmailsTableOrderingComposer,
+      $$EmailsTableAnnotationComposer,
+      $$EmailsTableCreateCompanionBuilder,
+      $$EmailsTableUpdateCompanionBuilder,
+      (Email, BaseReferences<_$AppDatabase, $EmailsTable, Email>),
+      Email,
+      PrefetchHooks Function()
+    >;
+typedef $$FilesTableCreateCompanionBuilder =
+    FilesCompanion Function({
+      required String id,
+      required String name,
+      required String path,
+      required String parent,
+      required DateTime dateCreated,
+      required DateTime dateLastModified,
+      required String collectionId,
+      required String contentType,
+      required int size,
+      Value<bool> isDeleted,
+      Value<String?> thumbnail,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<int> rowid,
+    });
+typedef $$FilesTableUpdateCompanionBuilder =
+    FilesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> path,
+      Value<String> parent,
+      Value<DateTime> dateCreated,
+      Value<DateTime> dateLastModified,
+      Value<String> collectionId,
+      Value<String> contentType,
+      Value<int> size,
+      Value<bool> isDeleted,
+      Value<String?> thumbnail,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<int> rowid,
+    });
+
+class $$FilesTableFilterComposer extends Composer<_$AppDatabase, $FilesTable> {
+  $$FilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parent => $composableBuilder(
+    column: $table.parent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dateCreated => $composableBuilder(
+    column: $table.dateCreated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dateLastModified => $composableBuilder(
+    column: $table.dateLastModified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentType => $composableBuilder(
+    column: $table.contentType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get thumbnail => $composableBuilder(
+    column: $table.thumbnail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FilesTable> {
+  $$FilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parent => $composableBuilder(
+    column: $table.parent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dateCreated => $composableBuilder(
+    column: $table.dateCreated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dateLastModified => $composableBuilder(
+    column: $table.dateLastModified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentType => $composableBuilder(
+    column: $table.contentType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get thumbnail => $composableBuilder(
+    column: $table.thumbnail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FilesTable> {
+  $$FilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get parent =>
+      $composableBuilder(column: $table.parent, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dateCreated => $composableBuilder(
+    column: $table.dateCreated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get dateLastModified => $composableBuilder(
+    column: $table.dateLastModified,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentType => $composableBuilder(
+    column: $table.contentType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get thumbnail =>
+      $composableBuilder(column: $table.thumbnail, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+}
+
+class $$FilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FilesTable,
+          File,
+          $$FilesTableFilterComposer,
+          $$FilesTableOrderingComposer,
+          $$FilesTableAnnotationComposer,
+          $$FilesTableCreateCompanionBuilder,
+          $$FilesTableUpdateCompanionBuilder,
+          (File, BaseReferences<_$AppDatabase, $FilesTable, File>),
+          File,
+          PrefetchHooks Function()
+        > {
+  $$FilesTableTableManager(_$AppDatabase db, $FilesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$FilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$FilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$FilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<String> parent = const Value.absent(),
+                Value<DateTime> dateCreated = const Value.absent(),
+                Value<DateTime> dateLastModified = const Value.absent(),
+                Value<String> collectionId = const Value.absent(),
+                Value<String> contentType = const Value.absent(),
+                Value<int> size = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> thumbnail = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FilesCompanion(
+                id: id,
+                name: name,
+                path: path,
+                parent: parent,
+                dateCreated: dateCreated,
+                dateLastModified: dateLastModified,
+                collectionId: collectionId,
+                contentType: contentType,
+                size: size,
+                isDeleted: isDeleted,
+                thumbnail: thumbnail,
+                latitude: latitude,
+                longitude: longitude,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String path,
+                required String parent,
+                required DateTime dateCreated,
+                required DateTime dateLastModified,
+                required String collectionId,
+                required String contentType,
+                required int size,
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> thumbnail = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FilesCompanion.insert(
+                id: id,
+                name: name,
+                path: path,
+                parent: parent,
+                dateCreated: dateCreated,
+                dateLastModified: dateLastModified,
+                collectionId: collectionId,
+                contentType: contentType,
+                size: size,
+                isDeleted: isDeleted,
+                thumbnail: thumbnail,
+                latitude: latitude,
+                longitude: longitude,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FilesTable,
+      File,
+      $$FilesTableFilterComposer,
+      $$FilesTableOrderingComposer,
+      $$FilesTableAnnotationComposer,
+      $$FilesTableCreateCompanionBuilder,
+      $$FilesTableUpdateCompanionBuilder,
+      (File, BaseReferences<_$AppDatabase, $FilesTable, File>),
+      File,
+      PrefetchHooks Function()
+    >;
+typedef $$FoldersTableCreateCompanionBuilder =
+    FoldersCompanion Function({
+      required String id,
+      required String name,
+      required String path,
+      required String parent,
+      required DateTime dateCreated,
+      required DateTime dateLastModified,
+      required String collectionId,
+      Value<int> rowid,
+    });
+typedef $$FoldersTableUpdateCompanionBuilder =
+    FoldersCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> path,
+      Value<String> parent,
+      Value<DateTime> dateCreated,
+      Value<DateTime> dateLastModified,
+      Value<String> collectionId,
+      Value<int> rowid,
+    });
+
+class $$FoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parent => $composableBuilder(
+    column: $table.parent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dateCreated => $composableBuilder(
+    column: $table.dateCreated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dateLastModified => $composableBuilder(
+    column: $table.dateLastModified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parent => $composableBuilder(
+    column: $table.parent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dateCreated => $composableBuilder(
+    column: $table.dateCreated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dateLastModified => $composableBuilder(
+    column: $table.dateLastModified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get parent =>
+      $composableBuilder(column: $table.parent, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dateCreated => $composableBuilder(
+    column: $table.dateCreated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get dateLastModified => $composableBuilder(
+    column: $table.dateLastModified,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get collectionId => $composableBuilder(
+    column: $table.collectionId,
+    builder: (column) => column,
+  );
+}
+
+class $$FoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FoldersTable,
+          Folder,
+          $$FoldersTableFilterComposer,
+          $$FoldersTableOrderingComposer,
+          $$FoldersTableAnnotationComposer,
+          $$FoldersTableCreateCompanionBuilder,
+          $$FoldersTableUpdateCompanionBuilder,
+          (Folder, BaseReferences<_$AppDatabase, $FoldersTable, Folder>),
+          Folder,
+          PrefetchHooks Function()
+        > {
+  $$FoldersTableTableManager(_$AppDatabase db, $FoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$FoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$FoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$FoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<String> parent = const Value.absent(),
+                Value<DateTime> dateCreated = const Value.absent(),
+                Value<DateTime> dateLastModified = const Value.absent(),
+                Value<String> collectionId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FoldersCompanion(
+                id: id,
+                name: name,
+                path: path,
+                parent: parent,
+                dateCreated: dateCreated,
+                dateLastModified: dateLastModified,
+                collectionId: collectionId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String path,
+                required String parent,
+                required DateTime dateCreated,
+                required DateTime dateLastModified,
+                required String collectionId,
+                Value<int> rowid = const Value.absent(),
+              }) => FoldersCompanion.insert(
+                id: id,
+                name: name,
+                path: path,
+                parent: parent,
+                dateCreated: dateCreated,
+                dateLastModified: dateLastModified,
+                collectionId: collectionId,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FoldersTable,
+      Folder,
+      $$FoldersTableFilterComposer,
+      $$FoldersTableOrderingComposer,
+      $$FoldersTableAnnotationComposer,
+      $$FoldersTableCreateCompanionBuilder,
+      $$FoldersTableUpdateCompanionBuilder,
+      (Folder, BaseReferences<_$AppDatabase, $FoldersTable, Folder>),
+      Folder,
+      PrefetchHooks Function()
+    >;
+typedef $$AlbumsTableCreateCompanionBuilder =
+    AlbumsCompanion Function({
+      required String id,
+      required String name,
+      Value<int> rowid,
+    });
+typedef $$AlbumsTableUpdateCompanionBuilder =
+    AlbumsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<int> rowid,
+    });
+
+class $$AlbumsTableFilterComposer
+    extends Composer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AlbumsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AlbumsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AlbumsTable> {
+  $$AlbumsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+}
+
+class $$AlbumsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AlbumsTable,
+          Album,
+          $$AlbumsTableFilterComposer,
+          $$AlbumsTableOrderingComposer,
+          $$AlbumsTableAnnotationComposer,
+          $$AlbumsTableCreateCompanionBuilder,
+          $$AlbumsTableUpdateCompanionBuilder,
+          (Album, BaseReferences<_$AppDatabase, $AlbumsTable, Album>),
+          Album,
+          PrefetchHooks Function()
+        > {
+  $$AlbumsTableTableManager(_$AppDatabase db, $AlbumsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$AlbumsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$AlbumsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$AlbumsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AlbumsCompanion(id: id, name: name, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<int> rowid = const Value.absent(),
+              }) => AlbumsCompanion.insert(id: id, name: name, rowid: rowid),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AlbumsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AlbumsTable,
+      Album,
+      $$AlbumsTableFilterComposer,
+      $$AlbumsTableOrderingComposer,
+      $$AlbumsTableAnnotationComposer,
+      $$AlbumsTableCreateCompanionBuilder,
+      $$AlbumsTableUpdateCompanionBuilder,
+      (Album, BaseReferences<_$AppDatabase, $AlbumsTable, Album>),
+      Album,
+      PrefetchHooks Function()
+    >;
+typedef $$ChatSessionsTableCreateCompanionBuilder =
+    ChatSessionsCompanion Function({
+      required String id,
+      Value<String?> title,
+      Value<String?> model,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ChatSessionsTableUpdateCompanionBuilder =
+    ChatSessionsCompanion Function({
+      Value<String> id,
+      Value<String?> title,
+      Value<String?> model,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ChatSessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ChatSessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ChatSessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get model =>
+      $composableBuilder(column: $table.model, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ChatSessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChatSessionsTable,
+          ChatSession,
+          $$ChatSessionsTableFilterComposer,
+          $$ChatSessionsTableOrderingComposer,
+          $$ChatSessionsTableAnnotationComposer,
+          $$ChatSessionsTableCreateCompanionBuilder,
+          $$ChatSessionsTableUpdateCompanionBuilder,
+          (
+            ChatSession,
+            BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>,
+          ),
+          ChatSession,
+          PrefetchHooks Function()
+        > {
+  $$ChatSessionsTableTableManager(_$AppDatabase db, $ChatSessionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ChatSessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$ChatSessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$ChatSessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChatSessionsCompanion(
+                id: id,
+                title: title,
+                model: model,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> title = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChatSessionsCompanion.insert(
+                id: id,
+                title: title,
+                model: model,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ChatSessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChatSessionsTable,
+      ChatSession,
+      $$ChatSessionsTableFilterComposer,
+      $$ChatSessionsTableOrderingComposer,
+      $$ChatSessionsTableAnnotationComposer,
+      $$ChatSessionsTableCreateCompanionBuilder,
+      $$ChatSessionsTableUpdateCompanionBuilder,
+      (
+        ChatSession,
+        BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>,
+      ),
+      ChatSession,
+      PrefetchHooks Function()
+    >;
+
+class $AppDatabaseManager {
+  final _$AppDatabase _db;
+  $AppDatabaseManager(this._db);
+  $$AppsTableTableManager get apps => $$AppsTableTableManager(_db, _db.apps);
+  $$AppUsersTableTableManager get appUsers =>
+      $$AppUsersTableTableManager(_db, _db.appUsers);
+  $$CollectionsTableTableManager get collections =>
+      $$CollectionsTableTableManager(_db, _db.collections);
+  $$EmailsTableTableManager get emails =>
+      $$EmailsTableTableManager(_db, _db.emails);
+  $$FilesTableTableManager get files =>
+      $$FilesTableTableManager(_db, _db.files);
+  $$FoldersTableTableManager get folders =>
+      $$FoldersTableTableManager(_db, _db.folders);
+  $$AlbumsTableTableManager get albums =>
+      $$AlbumsTableTableManager(_db, _db.albums);
+  $$ChatSessionsTableTableManager get chatSessions =>
+      $$ChatSessionsTableTableManager(_db, _db.chatSessions);
 }
