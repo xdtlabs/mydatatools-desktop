@@ -114,10 +114,7 @@ class _RxFilesPage extends State<RxFilesPage> {
         title: getBreadcrumb(collection!, path ?? collection!.path),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            height: 1.0,
-            color: Colors.grey.shade300,
-          ),
+          child: Container(height: 1.0, color: Colors.grey.shade300),
         ),
         actions: <Widget>[
           IconButton(
@@ -154,10 +151,10 @@ class _RxFilesPage extends State<RxFilesPage> {
               // collectionRepository.updateLastScanDate(collection, null);
               //refresh path
               if (collection != null) {
-                logger.s("refresh file list");
+                logger.s("Refreshing file list");
                 ScannerManager.getInstance()
-                    .getScanner(collection!)
-                    ?.start(collection!, path, true, true);
+                    .getScanner(collection!)!
+                    .start(collection!, path, true, true);
               }
             },
           ),

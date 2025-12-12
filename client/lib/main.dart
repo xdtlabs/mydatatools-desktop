@@ -145,7 +145,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
       pythonManager = await pythonFuture;
 
       // 3. Attempt Auto-Login
-      //await _attemptAutoLogin();
+      await _attemptAutoLogin();
 
       // 4. Signal ready
       if (mounted) {

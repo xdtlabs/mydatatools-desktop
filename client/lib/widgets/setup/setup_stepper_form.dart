@@ -32,7 +32,6 @@ class _SetupStepperFormState extends State<SetupStepperForm> {
   final Logger logger = Logger();
   final windowManager = WindowManager.instance;
   final encHelper = EncryptionHelper();
-  SendPort? dbWriterPort;
   AppUser? appUser;
   int currentStep = 0;
 
@@ -95,12 +94,6 @@ class _SetupStepperFormState extends State<SetupStepperForm> {
       // Initialize database
       await DatabaseManager.instance.initializeDatabase();
 
-      //final theme = Theme.of(context);
-      dbWriterPort = await DatabaseManager.instance.writerPort;
-      if (dbWriterPort == null) {
-        throw Exception('Failed to get db writer port');
-      }
-
       //Create new instance of User
       AppUser u = AppUser(
         id: appUser!.id,
@@ -113,34 +106,24 @@ class _SetupStepperFormState extends State<SetupStepperForm> {
       u.publicKey = appUser!.publicKey;
 
       //save user to database
-      final receivePort = ReceivePort();
-      dbWriterPort?.send({
-        'type': 'user',
-        'user': u,
-        'replyTo': receivePort.sendPort,
-      });
-
-      final response = await receivePort.first;
-      if (response == null) {
-        throw Exception('Failed to save user');
-      } else {
-        //do full login to check everything is ok
-        AppUser? newUser = await GetUserService.instance!.invoke(
-          GetUserServiceCommand(appUser!.password),
-        );
-        if (newUser != null) {
-          if (context.mounted) {
-            GoRouter.of(context).go("/");
-          }
-        } else {
-          // TODO: do something on save
-        }
-      }
-      receivePort.close();
+      DatabaseManager manager = DatabaseManager.instance;
+      final response = await manager.send({'type': 'user', 'object': u});
 
       if (response is Map && response.containsKey('error')) {
         logger.e("Error saving user: ${response['error']}");
         return;
+      }
+
+      //do full login to check everything is ok
+      AppUser? newUser = await GetUserService.instance!.invoke(
+        GetUserServiceCommand(appUser!.password),
+      );
+      if (newUser != null) {
+        if (context.mounted) {
+          GoRouter.of(context).go("/");
+        }
+      } else {
+        // TODO: do something on save
       }
 
       if (context.mounted) {

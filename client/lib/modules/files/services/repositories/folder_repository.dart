@@ -4,58 +4,53 @@ import 'package:mydatatools/models/tables/folder.dart';
 
 class FolderDesktopRepository {
   AppLogger logger = AppLogger(null);
+  final AppDatabase? _injectedDatabase;
 
-  FolderDesktopRepository();
+  FolderDesktopRepository([this._injectedDatabase]);
+
+  /// Helper to get the correct database instance.
+  /// Prefers the one injected (for isolates), falls back to singleton.
+  AppDatabase get _db =>
+      _injectedDatabase ?? DatabaseManager.instance.appDatabase!;
 
   Future<Folder?> getByPath(Folder f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
     Folder? folder =
-        await (db?.select(db.folders)
-          ?..where((t) => t.path.equals(f.path)))?.getSingleOrNull();
+        await (_db.select(_db.folders)
+          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
 
     return Future(() => folder);
   }
 
   Future<List<Folder>> getByParentPath(String path) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
     List<Folder> folders =
-        await (db?.select(db.folders)
-          ?..where((t) => t.parent.equals(path)))?.get() ??
-        [];
+        await (_db.select(_db.folders)
+          ..where((t) => t.parent.equals(path))).get();
 
     return Future(() => folders);
   }
 
   Future<Folder?> create(Folder f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
-    await db?.into(db.folders).insert(f);
+    await _db.into(_db.folders).insert(f);
     //grab latest
     Folder? folder =
-        await (db?.select(db.folders)
-          ?..where((t) => t.path.equals(f.path)))?.getSingleOrNull();
+        await (_db.select(_db.folders)
+          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
 
     return Future(() => folder);
   }
 
   Future<Folder?> update(Folder f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
-    await db?.update(db.folders).replace(f);
+    await _db.update(_db.folders).replace(f);
     //grab latest
     Folder? folder =
-        await (db?.select(db.folders)
-          ?..where((t) => t.path.equals(f.path)))?.getSingleOrNull();
+        await (_db.select(_db.folders)
+          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
 
     return Future(() => folder);
   }
 
   Future<Folder?> delete(Folder f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
-    await db?.delete(db.folders).delete(f);
+    await _db.delete(_db.folders).delete(f);
     return Future(() => null);
   }
 }

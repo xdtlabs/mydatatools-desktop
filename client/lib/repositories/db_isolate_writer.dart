@@ -8,7 +8,6 @@ import 'package:mydatatools/models/tables/app_user.dart';
 import 'package:mydatatools/modules/files/services/file_upsert_service.dart';
 import 'package:mydatatools/modules/files/services/folder_upsert_service.dart';
 import 'package:mydatatools/repositories/user_repository.dart';
-import 'package:mydatatools/services/get_user_service.dart';
 
 class DbIsolateWriterClient {
   Isolate? _isolate;
@@ -58,29 +57,6 @@ class DbIsolateWriterClient {
     return completer.future;
   }
 
-  /// Send a message to the isolate and await a response.
-  Future<dynamic> send(Map<String, dynamic> message) async {
-    if (_writerPort == null) {
-      throw Exception(
-        "DbIsolateWriterClient not started or writer port not available",
-      );
-    }
-
-    final ReceivePort responsePort = ReceivePort();
-    try {
-      message['replyTo'] = responsePort.sendPort;
-      _writerPort!.send(message);
-      final response = await responsePort.first;
-
-      if (response is Map && response.containsKey('error')) {
-        throw Exception(response['error']);
-      }
-      return response;
-    } finally {
-      responsePort.close();
-    }
-  }
-
   Future<void> stop() async {
     if (_sendPort == null) return;
     _sendPort!.send({'type': 'close'});
@@ -89,6 +65,24 @@ class DbIsolateWriterClient {
     _isolate = null;
     _sendPort = null;
     _writerPort = null;
+  }
+
+  Future<Map<dynamic, dynamic>> save(String type_, Object object_) async {
+    //save user to database
+    final receivePort = ReceivePort();
+    _writerPort?.send({
+      'type': type_,
+      'object': object_,
+      'replyTo': receivePort.sendPort,
+    });
+
+    final response = await receivePort.first;
+    if (response == null) {
+      throw Exception('Failed to save user');
+    } else {
+      receivePort.close();
+      return Future(() => {'type': type_, 'object': object_});
+    }
   }
 
   // Isolate entry-point. Must be a top-level function.
@@ -115,17 +109,19 @@ class DbIsolateWriterClient {
       try {
         if (data['type'] == 'file') {
           await FileUpsertService.instance.invoke(
-            FileUpsertServiceCommand(data['file'], db),
+            FileUpsertServiceCommand(data['object'], db),
           );
           replyTo?.send({'status': 'ok'});
         } else if (data['type'] == 'folder') {
           await FolderUpsertService.instance.invoke(
-            FolderUpsertServiceCommand(data['folder'], db),
+            FolderUpsertServiceCommand(data['object'], db),
           );
           replyTo?.send({'status': 'ok'});
         } else if (data['type'] == 'user') {
           // Handle user save
-          UserRepository(db).saveUser(data['user'] as AppUser).then((v) async {
+          UserRepository(db).saveUser(data['object'] as AppUser).then((
+            v,
+          ) async {
             replyTo?.send({'status': 'ok', 'id': v?.id});
           });
         } else {

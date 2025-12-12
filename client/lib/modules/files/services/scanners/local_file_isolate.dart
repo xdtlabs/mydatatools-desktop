@@ -9,7 +9,6 @@ import 'package:mydatatools/modules/files/files_constants.dart';
 import 'package:flutter/services.dart';
 import 'package:mydatatools/scanners/collection_scanner.dart';
 
-
 class LocalFileIsolate implements CollectionScanner {
   RootIsolateToken? token;
   SendPort? loggerIsolatePort;
@@ -22,10 +21,12 @@ class LocalFileIsolate implements CollectionScanner {
   }
 
   @override
-  Future<int> start(Collection collection,
-      String? path,
-      recursive,
-      bool force,) async {
+  Future<int> start(
+    Collection collection,
+    String? path,
+    recursive,
+    bool force,
+  ) async {
     // A Stream that handles communication between isolates
     ReceivePort p = ReceivePort();
     RootIsolateToken? token = RootIsolateToken.instance;
@@ -36,7 +37,12 @@ class LocalFileIsolate implements CollectionScanner {
     };
 
     //// Invoked the _scan() method in an isolate thread
-    LocalFileIsolateWorker worker = LocalFileIsolateWorker(token!, p.sendPort, dbWriterIsolatePort!, loggerIsolatePort);
+    LocalFileIsolateWorker worker = LocalFileIsolateWorker(
+      token!,
+      p.sendPort,
+      dbWriterIsolatePort!,
+      loggerIsolatePort,
+    );
     isolate = await Isolate.spawn<Map<String, dynamic>>(worker._scan, args);
     isolate!.addOnExitListener(p.sendPort);
 
@@ -63,11 +69,8 @@ class LocalFileIsolate implements CollectionScanner {
   }
 }
 
-
-
 //// Method will run in Isolate
-class LocalFileIsolateWorker{
-
+class LocalFileIsolateWorker {
   RootIsolateToken token;
   SendPort receiverPort;
   SendPort dbWriterPort;
@@ -75,7 +78,12 @@ class LocalFileIsolateWorker{
   AppLogger? logger;
 
   //constructor
-  LocalFileIsolateWorker(this.token, this.receiverPort, this.dbWriterPort, this.loggerPort){
+  LocalFileIsolateWorker(
+    this.token,
+    this.receiverPort,
+    this.dbWriterPort,
+    this.loggerPort,
+  ) {
     // Ensure the background binary messenger is initialized so plugins/platform channels work
     BackgroundIsolateBinaryMessenger.ensureInitialized(token);
   }
@@ -91,21 +99,13 @@ class LocalFileIsolateWorker{
 
     // start scanner on first directory
     logger?.i('Scanning: $path');
-    var fileCount = await _scanDir(
-      collectionId,
-      path,
-      recursive,
-    );
+    var fileCount = await _scanDir(collectionId, path, recursive);
 
     // return file count
     Isolate.exit(receiverPort, fileCount);
   }
 
-  Future<int> _scanDir(
-    String collectionId,
-    String path,
-    recursive,
-  ) async {
+  Future<int> _scanDir(String collectionId, String path, recursive) async {
     int count = 0;
     AppLogger logger = AppLogger(loggerPort);
 
@@ -120,31 +120,21 @@ class LocalFileIsolateWorker{
         count++;
         //save file
         File? file = _validateFile({}, collectionId, asset);
-        if( file != null ) {
-          dbWriterPort.send({
-            'type': 'file',
-            'file': file
-          });
+        if (file != null) {
+          dbWriterPort.send({'type': 'file', 'object': file});
         }
       } else if (asset is io.Directory) {
         //send status message back
         logger.s('Scanning: ${asset.path}');
         //save directory
         Folder? folder = _validateFolder({}, collectionId, asset);
-        if( folder != null ) {
-          dbWriterPort.send({
-            'type': 'folder',
-            'folder': folder
-          });
+        if (folder != null) {
+          dbWriterPort.send({'type': 'folder', 'object': folder});
         }
 
         try {
           if (recursive) {
-            int fileCount = await _scanDir(
-              collectionId,
-              asset.path,
-              recursive,
-            );
+            int fileCount = await _scanDir(collectionId, asset.path, recursive);
             count += fileCount;
           }
         } catch (err) {
@@ -272,10 +262,9 @@ class LocalFileIsolateWorker{
     //skip any hidden or system folders
     bool hidden = hiddenFolderRegex.hasMatch(dir_.path);
     bool skipFolder = skipFolderRegex.hasMatch(dir_.path);
-    if( hidden || skipFolder ){
+    if (hidden || skipFolder) {
       return null;
     }
-
 
     if (existingFolders_["$collectionId_:${dir_.path}"] == null) {
       String name = dir_.path.split("/").last;
@@ -285,13 +274,13 @@ class LocalFileIsolateWorker{
           .join("/");
 
       return Folder(
-          id: '$collectionId_:${dir_.path.hashCode}',
-          name: name,
-          path: dir_.path,
-          parent: parentPath,
-          dateCreated: DateTime.now(),
-          dateLastModified: DateTime.now(),
-          collectionId: collectionId_,
+        id: '$collectionId_:${dir_.path.hashCode}',
+        name: name,
+        path: dir_.path,
+        parent: parentPath,
+        dateCreated: DateTime.now(),
+        dateLastModified: DateTime.now(),
+        collectionId: collectionId_,
       );
     }
 
@@ -323,10 +312,9 @@ class LocalFileIsolateWorker{
     //skip any fines in a hidden or system folder
     bool hidden = hiddenFolderRegex.hasMatch(file_.path);
     bool skipFolder = skipFolderRegex.hasMatch(file_.path);
-    if( hidden || skipFolder ){
+    if (hidden || skipFolder) {
       return null;
     }
-
 
     //Check if it exists, skip it if it does
     DateTime lmDate = file_.lastModifiedSync();
@@ -378,7 +366,6 @@ class LocalFileIsolateWorker{
         return FilesConstants.mimeTypeUnKnown;
     }
   }
-
 }
 
 /** TODO map extra types and move to helper class

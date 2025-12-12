@@ -8,6 +8,7 @@ import 'package:mydatatools/app_constants.dart';
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/repositories/database_repository.dart';
 import 'package:mydatatools/repositories/db_isolate_writer.dart';
+import 'package:mydatatools/scanners/scanner_manager.dart';
 import 'package:path/path.dart' as p;
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -162,7 +163,31 @@ class DatabaseManager {
   }
 
   Future<void> _startScanners() async {
-    //ScannerManager.instance.startScanners();
+    ScannerManager.getInstance().startScanners(appDatabase!);
+  }
+
+  /// Send a message to the isolate and await a response.
+  Future<dynamic> send(Map<String, dynamic> message) async {
+    if (_writerPort == null) {
+      throw Exception(
+        "DbIsolateWriterClient not started or writer port not available",
+      );
+    }
+
+    final ReceivePort responsePort = ReceivePort();
+    try {
+      message['replyTo'] = responsePort.sendPort;
+      //send object to writer isolate
+      _writerPort!.send(message);
+      final response = await responsePort.first;
+
+      if (response is Map && response.containsKey('error')) {
+        throw Exception(response['error']);
+      }
+      return response;
+    } finally {
+      responsePort.close();
+    }
   }
 }
 
@@ -321,7 +346,10 @@ LazyDatabase _openConnection(String? path, String? name, bool useMemoryDb) {
         file,
         logStatements: true,
         cachePreparedStatements: true,
-        setup: null,
+        setup: (database) {
+          database.execute('PRAGMA journal_mode=WAL;');
+          database.execute('PRAGMA busy_timeout=5000;');
+        },
       );
       //return NativeDatabase.createInBackground(file, logStatements: true, cachePreparedStatements: true, setup: null);
     } else {

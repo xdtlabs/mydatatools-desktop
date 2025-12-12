@@ -10,30 +10,25 @@ import 'package:logger/logger.dart';
 
 class ScannerManager {
   final Logger logger = Logger();
-  static final ScannerManager _instance = ScannerManager._internal();
+  static final ScannerManager _instance = ScannerManager._initialize();
   List<Collection> collections = [];
   Map<String, CollectionScanner> scanners = {};
 
-  late AppDatabase database;
+  AppDatabase? database;
   //class reference to keep change listeners running
   StreamSubscription<List<Collection>>? collectionSubs;
 
-  // todo: pass in a dedicated writer thread
-  factory ScannerManager(AppDatabase database) {
-    _instance.database = database;
-    return _instance;
+  ScannerManager._initialize() {
+    // initialization logic
   }
 
   static ScannerManager getInstance() {
     return _instance;
   }
 
-  ScannerManager._internal() {
-    // initialization logic
-    //_instance.startScanners();
-  }
+  void startScanners(AppDatabase database) async {
+    this.database = database;
 
-  void startScanners() async {
     //start scanner for all existing collections
     var collections = await database.select(database.collections).get();
     for (var c in collections) {

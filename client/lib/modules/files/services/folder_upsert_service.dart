@@ -16,7 +16,7 @@ class FolderUpsertService
 
     isLoading.add(true);
 
-    FolderDesktopRepository repo = FolderDesktopRepository();
+    FolderDesktopRepository repo = FolderDesktopRepository(command.database);
 
     Folder? folder;
     try {
