@@ -169,6 +169,23 @@ class DatabaseManager {
   /// Backups the database to the specified path using VACUUM INTO.
   /// This creates a transactionally consistent copy of the database.
   Future<void> backupDatabase(String path) async {
+    /*
+      Restoration Steps
+      You will see three files in your application data folder:
+
+      1. app.db (The main data)
+      2. app.db-wal (The Write-Ahead Log)
+      3. app.db-shm (Shared Memory file)
+      To restore backup_2025-01-01.db:
+
+      1. Close the Application (or fully close the database connection). Never replace the file while the app is running.
+      2.Delete all three live files: app.db, app.db-wal, and app.db-shm.
+        Why? If you replace app.db but leave an old app.db-wal sitting there, SQLite might see the WAL file, think "Oh, I have unsaved changes in this log," and try to "replay" them into your restored backup. This will corrupt your database instantly because the log doesn't match the file anymore.
+      3. Copy backup_2025.db to app.db.
+      4. Restart the Application.
+      
+      SQLite will see a fresh db with no WAL file, and it will cleanly create new ones.
+    */
     if (appDatabase == null) {
       throw Exception("Database not initialized");
     }
@@ -204,6 +221,46 @@ class DatabaseManager {
       await backupDatabase(backupFile.path);
     } else {
       print("Daily backup already exists: ${backupFile.path}");
+    }
+
+    // Cleanup old backups (keep last 7)
+    await _cleanupOldBackups(backupDir);
+  }
+
+  /// Removes old backups, keeping only the 7 most recent ones.
+  Future<void> _cleanupOldBackups(io.Directory backupDir) async {
+    try {
+      final List<io.FileSystemEntity> files = backupDir.listSync();
+      final List<io.File> backups =
+          files
+              .whereType<io.File>()
+              .where(
+                (file) =>
+                    p.basename(file.path).startsWith('backup_') &&
+                    p.basename(file.path).endsWith('.db'),
+              )
+              .toList();
+
+      if (backups.length <= 7) {
+        return;
+      }
+
+      // Sort by modification time (descending), so newest is first
+      // Alternatively, we can rely on filename sorting since it is ISO8601 YYYY-MM-DD
+      backups.sort((a, b) {
+        return b.path.compareTo(
+          a.path,
+        ); // Lexicographical sort on path (filename date)
+      });
+
+      // Keep first 7, delete the rest
+      final backupsToDelete = backups.sublist(7);
+      for (final file in backupsToDelete) {
+        print("Deleting old backup: ${file.path}");
+        await file.delete();
+      }
+    } catch (e) {
+      print("Error cleaning up old backups: $e");
     }
   }
 
