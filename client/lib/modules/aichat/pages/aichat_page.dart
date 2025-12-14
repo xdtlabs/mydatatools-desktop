@@ -437,6 +437,52 @@ class _AichatPage extends State<AichatPage> {
           child: Container(height: 1.0, color: Colors.grey.shade300),
         ),
         actions: <Widget>[
+          DropdownButton<String>(
+            value: _selectedModel,
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                setState(() {
+                  _selectedModel = newValue;
+                });
+
+                // Get the label for the snackbar message
+                final selectedModelLabel =
+                    _models.firstWhere((m) => m['value'] == newValue)['label'];
+
+                // Switch model for current session, preserving history
+                _contentGenerator
+                    .startSession(
+                      sessionId: sessionId,
+                      modelName: newValue,
+                      history: null, // Pass null to preserve history on server
+                    )
+                    .then((_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Switched to $selectedModelLabel'),
+                        ),
+                      );
+                    })
+                    .catchError((error) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to switch model: $error'),
+                        ),
+                      );
+                    });
+              }
+            },
+            items:
+                _models.map<DropdownMenuItem<String>>((
+                  Map<String, String> model,
+                ) {
+                  return DropdownMenuItem<String>(
+                    value: model['value'],
+                    child: Text(model['label']!),
+                  );
+                }).toList(),
+            underline: Container(),
+          ),
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black),
             tooltip: 'New Session',
@@ -576,59 +622,6 @@ class _AichatPage extends State<AichatPage> {
                           },
                         ),
                         const Spacer(),
-                        DropdownButton<String>(
-                          value: _selectedModel,
-                          onChanged: (String? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _selectedModel = newValue;
-                              });
-
-                              // Get the label for the snackbar message
-                              final selectedModelLabel =
-                                  _models.firstWhere(
-                                    (m) => m['value'] == newValue,
-                                  )['label'];
-
-                              // Switch model for current session, preserving history
-                              _contentGenerator
-                                  .startSession(
-                                    sessionId: sessionId,
-                                    modelName: newValue,
-                                    history:
-                                        null, // Pass null to preserve history on server
-                                  )
-                                  .then((_) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Switched to $selectedModelLabel',
-                                        ),
-                                      ),
-                                    );
-                                  })
-                                  .catchError((error) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Failed to switch model: $error',
-                                        ),
-                                      ),
-                                    );
-                                  });
-                            }
-                          },
-                          items:
-                              _models.map<DropdownMenuItem<String>>((
-                                Map<String, String> model,
-                              ) {
-                                return DropdownMenuItem<String>(
-                                  value: model['value'],
-                                  child: Text(model['label']!),
-                                );
-                              }).toList(),
-                          underline: Container(),
-                        ),
                         _isGenerating
                             ? const Padding(
                               padding: EdgeInsets.all(8.0),

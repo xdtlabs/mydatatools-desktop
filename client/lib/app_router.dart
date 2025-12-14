@@ -1,6 +1,7 @@
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/app_user.dart';
 import 'package:mydatatools/modules/aichat/pages/aichat_page.dart';
+import 'package:mydatatools/modules/aichat/pages/settings_page.dart';
 import 'package:mydatatools/modules/aichat/widgets/aichat_drawer.dart';
 import 'package:mydatatools/modules/email/pages/email_page.dart';
 import 'package:mydatatools/modules/email/pages/new_email_page.dart';
@@ -131,6 +132,19 @@ class AppRouter {
                     drawer: AiChatDrawer(),
                   ),
                 ),
+            routes: [
+              GoRoute(
+                path: 'settings',
+                pageBuilder:
+                    (context, state) => RoutePage(
+                      key: UniqueKey(),
+                      body: const NavigationWrapper(
+                        body: SettingsPage(),
+                        drawer: AiChatDrawer(),
+                      ),
+                    ),
+              ),
+            ],
           ),
 
           /// Photos Module Routes

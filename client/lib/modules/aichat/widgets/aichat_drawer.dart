@@ -93,6 +93,14 @@ class _AiChatDrawer extends State<AiChatDrawer> {
                 },
               ),
             ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                context.go('/aichat/settings');
+              },
+            ),
           ],
         ),
       ),
