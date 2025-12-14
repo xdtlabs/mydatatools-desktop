@@ -12,6 +12,7 @@ import 'package:mydatatools/models/tables/chat_session.dart';
 import 'package:mydatatools/models/tables/chat_message.dart' as db_model;
 import 'package:mydatatools/modules/aichat/widgets/aichat_drawer.dart';
 import 'dart:convert'; // For jsonEncode
+import 'package:mydatatools/modules/aichat/repositories/aichat_settings_repository.dart';
 
 class AichatPage extends StatefulWidget {
   const AichatPage({super.key});
@@ -37,11 +38,8 @@ class _AichatPage extends State<AichatPage> {
   AppLogger logger = AppLogger(null);
   bool _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
   String _selectedModel = 'google/gemma-3-4b-it';
-  final List<Map<String, String>> _models = [
-    {'label': 'Local LLM', 'value': 'google/gemma-3-4b-it'},
-    {'label': 'Gemini Flash (web)', 'value': 'gemini-2.5-flash'},
-    {'label': 'Gemini Pro (web)', 'value': 'gemini-2.5-pro'},
-    {'label': 'Gemini 3 Pro (Image)', 'value': 'gemini-3-pro-images'},
+  List<Map<String, dynamic>> _models = [
+    {'label': 'Local LLM', 'value': 'google/gemma-3-4b-it', 'header': false},
   ];
   final _textController = TextEditingController();
 
@@ -66,6 +64,10 @@ class _AichatPage extends State<AichatPage> {
     // Let's assume for this step we stick to the generated one unless I update the router.
     // WAIT: The Drawer uses `context.go('/aichat?sessionId=...')`.
     // I need to read that.
+
+    // I need to read that.
+
+    _loadModels();
 
     // Save initial session
     _saveSession();
@@ -304,6 +306,159 @@ class _AichatPage extends State<AichatPage> {
     );
   }
 
+  Future<void> _loadModels() async {
+    final repo = AiChatSettingsRepository();
+
+    // 1. Local is already default
+    final List<Map<String, dynamic>> newModels = [
+      {'label': 'Local LLM', 'value': 'google/gemma-3-4b-it', 'header': false},
+    ];
+
+    // 2. Hugging Face
+    final hfModels = await repo.getHuggingFaceModels();
+    if (hfModels.any((m) => m['enabled'] == true)) {
+      newModels.add({
+        'label': 'Hugging Face',
+        'value': '__header_hf__',
+        'header': true,
+      });
+      for (var m in hfModels) {
+        if (m['enabled'] == true) {
+          newModels.add({
+            'label': m['name'],
+            'value': m['name'],
+            'header': false,
+          });
+        }
+      }
+    }
+
+    // 3. Gemini
+    if (await repo.getGeminiEnabled()) {
+      bool headerAdded = false;
+
+      if (await repo.getGeminiFlashEnabled()) {
+        if (!headerAdded) {
+          newModels.add({
+            'label': 'Google',
+            'value': '__header_google__',
+            'header': true,
+          });
+          headerAdded = true;
+        }
+        newModels.add({
+          'label': 'Gemini Flash',
+          'value': 'gemini-2.5-flash',
+          'header': false,
+        });
+      }
+
+      if (await repo.getGeminiProEnabled()) {
+        if (!headerAdded) {
+          newModels.add({
+            'label': 'Google',
+            'value': '__header_google__',
+            'header': true,
+          });
+          headerAdded = true;
+        }
+        newModels.add({
+          'label': 'Gemini Pro',
+          'value': 'gemini-2.5-pro',
+          'header': false,
+        });
+      }
+    }
+
+    // 4. OpenAI
+    if (await repo.getOpenAIEnabled()) {
+      bool headerAdded = false;
+
+      if (await repo.getGPT52Enabled()) {
+        if (!headerAdded) {
+          newModels.add({
+            'label': 'OpenAI',
+            'value': '__header_openai__',
+            'header': true,
+          });
+          headerAdded = true;
+        }
+        newModels.add({
+          'label': 'GPT 5.2',
+          'value': 'gpt-5.2',
+          'header': false,
+        });
+      }
+
+      if (await repo.getGPT5MiniEnabled()) {
+        if (!headerAdded) {
+          newModels.add({
+            'label': 'OpenAI',
+            'value': '__header_openai__',
+            'header': true,
+          });
+          headerAdded = true;
+        }
+        newModels.add({
+          'label': 'GPT 5 Mini',
+          'value': 'gpt-5-mini',
+          'header': false,
+        });
+      }
+    }
+
+    // 5. Grok
+    if (await repo.getGrokEnabled()) {
+      bool headerAdded = false;
+
+      if (await repo.getGrok4Enabled()) {
+        if (!headerAdded) {
+          newModels.add({
+            'label': 'Grok',
+            'value': '__header_grok__',
+            'header': true,
+          });
+          headerAdded = true;
+        }
+        newModels.add({'label': 'Grok 4', 'value': 'grok-4', 'header': false});
+      }
+
+      if (await repo.getGrok4FastEnabled()) {
+        if (!headerAdded) {
+          newModels.add({
+            'label': 'Grok',
+            'value': '__header_grok__',
+            'header': true,
+          });
+          headerAdded = true;
+        }
+        newModels.add({
+          'label': 'Grok 4 Fast',
+          'value': 'grok-4-fast',
+          'header': false,
+        });
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _models = newModels;
+        // Ensure selected model is still valid
+        final exists = _models.any(
+          (m) => m['value'] == _selectedModel && m['header'] == false,
+        );
+        if (!exists) {
+          // If selected model is gone or invalid (e.g. was a header?), fallback to first valid local
+          final firstValid = _models.firstWhere(
+            (m) => m['header'] == false,
+            orElse: () => {'value': 'google/gemma-3-4b-it'},
+          );
+          _selectedModel = firstValid['value'] as String;
+        }
+      });
+    }
+  }
+
   Future<void> _saveSession() async {
     final session = ChatSession(
       id: sessionId,
@@ -474,11 +629,30 @@ class _AichatPage extends State<AichatPage> {
             },
             items:
                 _models.map<DropdownMenuItem<String>>((
-                  Map<String, String> model,
+                  Map<String, dynamic> model,
                 ) {
+                  final bool isHeader = model['header'] == true;
+
+                  if (isHeader) {
+                    return DropdownMenuItem<String>(
+                      enabled: false,
+                      value: model['value'],
+                      child: Text(
+                        model['label'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    );
+                  }
+
                   return DropdownMenuItem<String>(
                     value: model['value'],
-                    child: Text(model['label']!),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 12.0),
+                      child: Text(model['label']),
+                    ),
                   );
                 }).toList(),
             underline: Container(),

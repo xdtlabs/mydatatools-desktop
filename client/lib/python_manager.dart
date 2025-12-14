@@ -91,10 +91,10 @@ class PythonManager {
         [],
         workingDirectory: _pythonDir,
         environment: {
-          'HF_TOKEN': '', //todo pass from client
-          'GOOGLE_API_KEY': '', //todo pass from client
-          'OPENAI_API_KEY': '', //todo pass from client
-          'GROK_API_KEY': '', //todo pass from client
+          'HF_TOKEN': '', // Hugging Face token //todo pass from client
+          'GOOGLE_API_KEY': '', // Google API key //todo pass from client
+          'OPENAI_API_KEY': '', // OpenAI API key //todo pass from client
+          'GROK_API_KEY': '', // Grok API key //todo pass from client
           'MODEL_DOWNLOAD_URL':
               'https://gcs-file-downloader-10805446439.us-central1.run.app', // todo get from remote config
         },
