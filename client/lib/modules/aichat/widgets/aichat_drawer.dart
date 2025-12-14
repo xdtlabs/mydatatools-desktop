@@ -70,7 +70,7 @@ class _AiChatDrawer extends State<AiChatDrawer> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
                     selected: session.id == currentSessionId,
                     selectedTileColor: theme.colorScheme.primaryContainer
-                        .withOpacity(0.2),
+                        .withValues(alpha: 0.2),
                     title: Text(
                       title,
                       style: theme.textTheme.bodyMedium?.copyWith(

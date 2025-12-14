@@ -29,7 +29,7 @@ class AppRouter {
   static GlobalKey<NavigatorState> rootNavigatorKey =
       GlobalKey<NavigatorState>();
 
-  static get instance => GoRouter(
+  static GoRouter get instance => GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     refreshListenable: DatabaseManager.isInitializedNotifier,
