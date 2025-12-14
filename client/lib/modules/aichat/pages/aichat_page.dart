@@ -117,14 +117,29 @@ class _AichatPage extends State<AichatPage> {
       }
     });
 
+    // Listen to error stream
+    _contentGenerator.errorStream.listen((error) {
+      if (mounted) {
+        logger.e('Content Generator Error: ${error.error}');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${error.error}')));
+        setState(() {
+          _isGenerating = false;
+        });
+      }
+    });
+
     // Listen to raw GenUI messages for saving to DB
     _contentGenerator.rawGenUiMessageStream.listen(
       (messageJson) {
         //logger.d('DEBUG: rawGenUiMessageStream received: $messageJson');
-        _saveGenUiMessage(messageJson);
+        _saveGenUiMessage(messageJson).catchError((e) {
+          logger.e('Failed to save GenUI message: $e');
+        });
       },
       onError: (error) {
-        //logger.e('DEBUG: rawGenUiMessageStream error: $error');
+        logger.e('DEBUG: rawGenUiMessageStream error: $error');
       },
     );
 
@@ -135,7 +150,12 @@ class _AichatPage extends State<AichatPage> {
         setState(() {
           _chatItems.add(TextMessageItem(role: 'assistant', text: text));
         });
-        _saveTextMessage('assistant', text);
+        _saveTextMessage('assistant', text).catchError((e) {
+          logger.e('Failed to save assistant message: $e');
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to save message: $e')));
+        });
       }
     });
 
@@ -197,11 +217,18 @@ class _AichatPage extends State<AichatPage> {
     final messages = await DatabaseManager.instance.repository!.getChatMessages(
       id,
     );
+    logger.d('Loaded ${messages.length} messages for session $id');
+    for (var m in messages) {
+      logger.d(
+        'Message: role=${m.role}, content=${m.content.substring(0, m.content.length > 20 ? 20 : m.content.length)}...',
+      );
+    }
 
     // We need to fetch the session first to get the model to ensure consistency
     // Implementation omitted for brevity, assuming existing model or default.
 
     final history = <String>[];
+    final genUiMessagesToRestore = <dynamic>[];
     for (final msg in messages) {
       if (msg.role == 'user') {
         _chatItems.add(TextMessageItem(role: 'user', text: msg.content));
@@ -211,26 +238,62 @@ class _AichatPage extends State<AichatPage> {
         history.add(msg.content);
       } else if (msg.role == 'model_genui') {
         if (msg.data != null) {
+          bool handled = false;
           try {
             final dataMap = jsonDecode(msg.data!);
             if (dataMap is Map) {
+              genUiMessagesToRestore.add(dataMap);
               if (dataMap.containsKey('beginRendering')) {
                 final br = dataMap['beginRendering'];
                 _addSurfaceId(br['surfaceId']);
+                handled = true;
+              } else if (dataMap.containsKey('surfaceUpdate')) {
+                handled = true;
               }
             } else if (dataMap is List) {
               // **FIXED Iterable Lint Error**: Iterate over the list directly
               for (var item in dataMap) {
-                if (item is Map && item.containsKey('beginRendering')) {
-                  _addSurfaceId(item['beginRendering']['surfaceId']);
+                genUiMessagesToRestore.add(item);
+                if (item is Map) {
+                  if (item.containsKey('beginRendering')) {
+                    _addSurfaceId(item['beginRendering']['surfaceId']);
+                    handled = true;
+                  } else if (item.containsKey('surfaceUpdate')) {
+                    handled = true;
+                  }
                 }
               }
             }
           } catch (e) {
             logger.e('Error parsing saved GenUI data: $e');
           }
+
+          if (!handled) {
+            // If not a surface command, try to extract text content
+            String displayText = msg.data!;
+            try {
+              final json = jsonDecode(msg.data!);
+              if (json is Map) {
+                if (json.containsKey('text') && json['text'] is String) {
+                  displayText = json['text'];
+                } else if (json.containsKey('content') &&
+                    json['content'] is String) {
+                  displayText = json['content'];
+                }
+              }
+            } catch (e) {
+              // ignore, use raw data
+            }
+            _chatItems.add(
+              TextMessageItem(role: 'assistant', text: displayText),
+            );
+          }
         }
       }
+    }
+
+    if (genUiMessagesToRestore.isNotEmpty) {
+      _contentGenerator.restoreHistory(genUiMessagesToRestore);
     }
 
     // Re-start LLM session

@@ -81,6 +81,9 @@ class DbIsolateWriterClient {
     final response = await receivePort.first;
     if (response == null) {
       throw Exception('Failed to save user');
+    } else if (response is Map && response.containsKey('error')) {
+      receivePort.close();
+      throw Exception('DbIsolateWriter Error: ${response['error']}');
     } else {
       receivePort.close();
       return Future(() => {'type': type_, 'object': object_});

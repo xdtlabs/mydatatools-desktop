@@ -182,10 +182,26 @@ class LocalLlmContentGenerator implements ContentGenerator {
         throw Exception('Failed to start session: ${response.statusCode}');
       }
 
-      ('Session started successfully: $_sessionId');
+      logger.d('Session started successfully: $_sessionId');
     } catch (e) {
       logger.e('Error starting session: $e');
       rethrow;
+    }
+  }
+
+  void restoreHistory(List<dynamic> messageJsons) {
+    for (final messageJson in messageJsons) {
+      try {
+        if (messageJson is Map && messageJson.containsKey('surfaceUpdate')) {
+          // It's likely a raw update, wrapper it or treat as is depending on A2uiMessage expectations
+          // But A2uiMessage.fromJson expects the full packet usually.
+          // Let's assume messageJson is the full object saved in DB.
+        }
+        final message = A2uiMessage.fromJson(messageJson);
+        _a2uiMessageController.add(message);
+      } catch (e) {
+        logger.e('Failed to restore GenUI message: $e');
+      }
     }
   }
 }
