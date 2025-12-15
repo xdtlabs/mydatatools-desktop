@@ -5,8 +5,12 @@ import 'dart:isolate';
 import 'package:flutter/services.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/app_user.dart';
+import 'package:mydatatools/models/tables/file.dart';
+import 'package:mydatatools/models/tables/folder.dart';
 import 'package:mydatatools/modules/files/services/file_upsert_service.dart';
 import 'package:mydatatools/modules/files/services/folder_upsert_service.dart';
+import 'package:mydatatools/modules/files/services/repositories/file_repository.dart';
+import 'package:mydatatools/modules/files/services/repositories/folder_repository.dart';
 import 'package:mydatatools/repositories/user_repository.dart';
 import 'package:mydatatools/models/tables/chat_session.dart';
 import 'package:mydatatools/models/tables/chat_message.dart';
@@ -114,28 +118,41 @@ class DbIsolateWriterClient {
 
       try {
         if (data['type'] == 'file') {
-          await FileUpsertService.instance.invoke(
-            FileUpsertServiceCommand(data['object'], db),
-          );
-          replyTo?.send({'status': 'ok'});
+          // Save or Update new files
+          var file_ = data['object'] as File;
+          final repo = FileDesktopRepository(db);
+          var file = await repo.getByPath(file_);
+          if (file == null) {
+            await repo.create(file_);
+            replyTo?.send({'status': 'ok', 'id': file_.id});
+          } else {
+            await repo.update(file_);
+            replyTo?.send({'status': 'ok', 'id': file_.id});
+          }
         } else if (data['type'] == 'folder') {
-          await FolderUpsertService.instance.invoke(
-            FolderUpsertServiceCommand(data['object'], db),
-          );
-          replyTo?.send({'status': 'ok'});
+          // Save or Update new folders
+          var folder_ = data['object'] as Folder;
+          final repo = FolderDesktopRepository(db);
+          var folder = await repo.getByPath(folder_);
+          if (folder == null) {
+            await repo.create(folder_);
+            replyTo?.send({'status': 'ok', 'id': folder_.id});
+          } else {
+            await repo.update(folder_);
+            replyTo?.send({'status': 'ok', 'id': folder_.id});
+          }
         } else if (data['type'] == 'user') {
           // Handle user save
-          UserRepository(db).saveUser(data['object'] as AppUser).then((
-            v,
-          ) async {
-            replyTo?.send({'status': 'ok', 'id': v?.id});
-          });
+          await UserRepository(db).saveUser(data['object'] as AppUser);
+          replyTo?.send({'status': 'ok', 'id': data['object'].id});
         } else if (data['type'] == 'chat_session') {
+          // handle new AIChat sessions
           await ChatRepository(db).saveSession(data['object'] as ChatSession);
-          replyTo?.send({'status': 'ok'});
+          replyTo?.send({'status': 'ok', 'id': data['object'].id});
         } else if (data['type'] == 'chat_message') {
+          // Save new user or model chat messages
           await ChatRepository(db).saveMessage(data['object'] as ChatMessage);
-          replyTo?.send({'status': 'ok'});
+          replyTo?.send({'status': 'ok', 'id': data['object'].id});
         } else {
           print("Unknown message type: ${data['type']}");
           replyTo?.send({'error': 'Unknown message type: ${data['type']}'});
