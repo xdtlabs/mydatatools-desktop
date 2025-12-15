@@ -10,7 +10,7 @@ import 'package:uuid/v4.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/chat_session.dart';
 import 'package:mydatatools/models/tables/chat_message.dart' as db_model;
-import 'package:mydatatools/modules/aichat/widgets/aichat_drawer.dart';
+
 import 'dart:convert'; // For jsonEncode
 import 'package:mydatatools/modules/aichat/repositories/aichat_settings_repository.dart';
 import 'package:mydatatools/modules/aichat/models/chat_ui_models.dart';
@@ -671,7 +671,6 @@ class _AichatPage extends State<AichatPage> {
     }
 
     return Scaffold(
-      drawer: const Drawer(child: AiChatDrawer()),
       appBar: AppBar(
         centerTitle: false,
         title: const Text("AI Chat"),
