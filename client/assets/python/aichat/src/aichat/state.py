@@ -2,17 +2,29 @@
 Global state management for the application.
 
 This module manages the global state of loaded models and provides thread-safe
-access to model instances, IDs, and synchronization locks. It ensures that
-model loading operations are coordinated across concurrent requests.
+access to model instances, IDs, and synchronization locks.
+
+Architectural Note:
+    - **Local Models**: Due to high VRAM usage, the system is designed to support 
+      only ONE loaded local model at a time (`llm_instance`). Switching local models
+      requires unloading the previous one.
+    - **Cloud Models (Gemini)**: These do not consume local VRAM and are instantiated 
+      per-request or per-session. They can coexist with a loaded local model.
+      
+This constraint is enforced by the `model_lock` and the single `llm_instance` variable.
 """
 import asyncio
 from typing import Optional, Any, Tuple, Dict, List
 
 # --- FIX: Conditionally Import HuggingFacePipeline ---
+# We favor 'langchain_huggingface' which is the modern path, but fallback to 
+# 'langchain_community' to support older environments without crashing.
 try:
     from langchain_huggingface import HuggingFacePipeline
+    print("Using langchain_huggingface.HuggingFacePipeline (Recommended).")
 except ImportError:
     from langchain_community.llms import HuggingFacePipeline
+    print("WARNING: Falling back to langchain_community.llms.HuggingFacePipeline. Please install 'langchain-huggingface' to eliminate all deprecation warnings.")
 
 # Global variables to store the currently active model instance and status
 llm_instance: Optional[HuggingFacePipeline] = None

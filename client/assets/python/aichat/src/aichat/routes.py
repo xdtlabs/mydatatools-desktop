@@ -5,7 +5,7 @@ This module contains all the FastAPI route handler functions that implement
 the business logic for the API endpoints. Each function corresponds to a
 specific API endpoint and handles request processing, validation, and response generation.
 """
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from fastapi import HTTPException, File, UploadFile
 from PIL import Image
 from io import BytesIO
@@ -193,30 +193,19 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
             set_llm_instance(None)
             set_current_model_id(None)
 
-            if model_id.startswith("gemini"):
-                # This path shouldn't be reached if we handled gemini above, 
-                # but keeping for safety or if logic changes.
-                new_llm = load_gemini_model(model_id)
-            else:
-                new_llm = load_local_model(local_path)
+            # This path is actually unreachable because Gemini models are handled 
+            # before acquiring the lock at the top of the function.
+            # However, we'll leave a sanity check or just load local model.
+            new_llm = load_local_model(local_path)
             
             set_llm_instance(new_llm)
             set_current_model_id(model_id)
             
             print(f"[LOADER] Model {model_id} loaded and set as active session.")
             
-            # 4. Initialize history if provided
-            if request.session_id:
-                from .state import conversation_manager
-                if request.history is not None:
-                    await conversation_manager.set_history(request.session_id, request.history)
-                    print(f"[SESSION] Initialized history for session {request.session_id} with {len(request.history)} turns.")
-                else:
-                    # If session_id provided but no history, maybe we want to clear it? 
-                    # Or just leave it as is if it exists? 
-                    # The requirement says "call start_session() with an empty array for the history" to clear it.
-                    # So if history is [], it will be set to [].
-                    pass
+            if request.history is not None:
+                await conversation_manager.set_history(request.session_id, request.history)
+                print(f"[SESSION] Initialized history for session {request.session_id} with {len(request.history)} turns.")
 
             return {
                 "status": "success", 
@@ -316,89 +305,28 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
 
         print(f"[DEBUG] Full prompt: {full_prompt}")
         
-        # Invoke the model
+        # Invoke the model to get a raw response.
         response_text = llm_to_use.invoke(full_prompt)
         
-        # Handle response parsing based on model type
-        if session_model and session_model.startswith("gemini"):
-             # Gemini response is usually an AIMessage object or string depending on invoke result
-             # ChatGoogleGenerativeAI.invoke returns an AIMessage
-             if hasattr(response_text, 'content'):
-                 ai_response = response_text.content
-             else:
-                 ai_response = str(response_text)
-        else:
-            # Local model output includes the input prompt, so we strip it out.
-            if full_prompt in response_text:
-                ai_response = response_text.split(full_prompt, 1)[-1].strip()
-            else:
-                ai_response = response_text.strip()
-            
-            # Strip potential remaining tags if the generation stops abruptly
-            ai_response = ai_response.replace("<end_of_turn>", "").strip()
+        # Process the raw model response (clean up tags, strip prompt).
+        ai_response = _clean_model_response(
+            response_text=response_text,
+            is_gemini=bool(session_model and session_model.startswith("gemini")),
+            full_prompt=full_prompt
+        )
         
-        # Store the new turn in history
+        # Store the new turn in history.
         await conversation_manager.add_turn(request.session_id, request.prompt, ai_response)
         
-        # Check for tool use BEFORE wrapping in GenUI text component
-        # Use ai_response which has the prompt stripped out
-        clean_response = ai_response.strip()
-        
-        # Handle markdown code blocks if present
-        if "```json" in clean_response:
-            clean_response = clean_response.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_response:
-            clean_response = clean_response.split("```")[1].split("```")[0].strip()
-            
-        tool_use_handled = False
-        
-        if clean_response.startswith("{") and clean_response.endswith("}"):
-            try:
-                import json
-                response_json = json.loads(clean_response)
-                if response_json.get("tool_use") == "generate_image":
-                    prompt = response_json.get("parameters", {}).get("prompt")
-                    if prompt:
-                        print(f"[TOOL] Generating image for prompt: {prompt}")
-                        try:
-                            image_base64 = generate_image(prompt, session_model)
-                            # Create GenUI Image component
-                            from .genui_schema import create_image_component, create_surface_id, create_begin_rendering_message, create_surface_update_message
-                            
-                            # Construct GenUI message for image
-                            surface_id = create_surface_id()
-                            image_component = create_image_component(
-                                url=f"data:image/png;base64,{image_base64}",
-                                alt_text=prompt
-                            )
-                            
-                            component_wrapper = {
-                                "id": "root",
-                                "component": image_component
-                            }
-                            
-                            genui_messages = [
-                                create_begin_rendering_message(surface_id, "root"),
-                                create_surface_update_message(surface_id, [component_wrapper])
-                            ]
-                            
-                            ai_response = json.dumps(genui_messages)
-                            tool_use_handled = True
-                            
-                        except Exception as e:
-                            print(f"[ERROR] Tool execution failed: {e}")
-                            if request.use_genui:
-                                from .genui_schema import create_genui_messages_for_text
-                                ai_response = json.dumps(create_genui_messages_for_text(f"Failed to generate image: {e}"))
-                                tool_use_handled = True
-                            else:
-                                ai_response = f"Failed to generate image: {e}"
-                                tool_use_handled = True
-            except Exception as e:
-                print(f"[DEBUG] JSON parse error or not a tool use: {e}")
-                pass
+        # Check for tool use (JSON) and handle image generation if needed.
+        # This function handles the "tool_use": "generate_image" case.
+        ai_response, tool_use_handled = _process_tool_use_response(
+            ai_response=ai_response,
+            session_model=session_model,
+            use_genui=request.use_genui
+        )
 
-        # If use_genui is True and we haven't handled it as a tool use, wrap the text response
+        # If use_genui is True and we haven't handled it as a tool use, wrap the text response.
         if request.use_genui and not tool_use_handled:
             from .genui_schema import create_genui_messages_for_text
             import json
@@ -630,3 +558,127 @@ async def generate_embedding_from_upload(
             status_code=500,
             detail=f"Failed to generate embedding: {e}"
         )
+
+
+def _clean_model_response(response_text: Any, is_gemini: bool, full_prompt: str) -> str:
+    """
+    Clean and format the raw response from the LLM.
+    
+    Handles differences between local HuggingFace pipeline outputs (which echo prompts)
+    and Gemini API outputs. Strips specific tokens and whitespace.
+    
+    Args:
+        response_text: Raw output from llm.invoke()
+        is_gemini: True if the model is a Gemini cloud model
+        full_prompt: The prompt text that was sent to the model (for stripping echoes)
+        
+    Returns:
+        str: Cleaned response text
+    """
+    if is_gemini:
+        # Gemini response is usually an AIMessage object or string depending on invoke result
+        # ChatGoogleGenerativeAI.invoke returns an AIMessage
+        if hasattr(response_text, 'content'):
+            return response_text.content
+        return str(response_text)
+    
+    # Local model output logic
+    # Local models often return the full text including the input prompt
+    response_str = str(response_text)
+    
+    if full_prompt in response_str:
+        ai_response = response_str.split(full_prompt, 1)[-1].strip()
+    else:
+        ai_response = response_str.strip()
+    
+    # Strip potential remaining tags if the generation stops abruptly
+    ai_response = ai_response.replace("<end_of_turn>", "").strip()
+    return ai_response
+
+
+def _process_tool_use_response(ai_response: str, session_model: Optional[str], use_genui: bool) -> Tuple[str, bool]:
+    """
+    Check if the model's response is a tool use request (JSON) and execute it.
+    
+    Currently supports the 'generate_image' tool.
+    
+    Args:
+        ai_response: The text response from the model
+        session_model: The name of the model currently in use (for image gen context)
+        use_genui: Whether the client expects GenUI formatted JSON responses
+        
+    Returns:
+        Tuple[str, bool]: (Final response string, handled boolean)
+                          handled is True if tool use was executed and response replaced.
+    """
+    clean_response = ai_response.strip()
+    
+    # Handle markdown code blocks if present to extract the JSON
+    if "```json" in clean_response:
+        clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+    elif "```" in clean_response:
+        clean_response = clean_response.split("```")[1].split("```")[0].strip()
+        
+    if not (clean_response.startswith("{") and clean_response.endswith("}")):
+        return ai_response, False
+
+    try:
+        import json
+        response_json = json.loads(clean_response)
+        
+        # Check if it's the specific generate_image tool
+        if response_json.get("tool_use") == "generate_image":
+            prompt = response_json.get("parameters", {}).get("prompt")
+            if prompt:
+                print(f"[TOOL] Generating image for prompt: {prompt}")
+                try:
+                    # Execute the tool
+                    image_base64 = generate_image(prompt, session_model)
+                    
+                    # Format response as GenUI if requested
+                    if use_genui:
+                        from .genui_schema import (
+                            create_image_component, create_surface_id, 
+                            create_begin_rendering_message, create_surface_update_message
+                        )
+                        
+                        # Construct GenUI message for image
+                        surface_id = create_surface_id()
+                        image_component = create_image_component(
+                            url=f"data:image/png;base64,{image_base64}",
+                            alt_text=prompt
+                        )
+                        
+                        component_wrapper = {
+                            "id": "root",
+                            "component": image_component
+                        }
+                        
+                        genui_messages = [
+                            create_begin_rendering_message(surface_id, "root"),
+                            create_surface_update_message(surface_id, [component_wrapper])
+                        ]
+                        
+                        return json.dumps(genui_messages), True
+                    else:
+                        # Return base64 for non-GenUI clients (or just a message)
+                        # Returning the raw base64 might be too huge for some clients not expecting it
+                        # but keeping it simple for now. 
+                        # Actually, better to return a text description if GenUI not enabled?
+                        # Or consistent format.
+                        return f"[Image generated for prompt: {prompt}]", True
+                    
+                except Exception as e:
+                    print(f"[ERROR] Tool execution failed: {e}")
+                    if use_genui:
+                        from .genui_schema import create_genui_messages_for_text
+                        error_msgs = create_genui_messages_for_text(f"Failed to generate image: {e}")
+                        return json.dumps(error_msgs), True
+                    else:
+                        return f"Failed to generate image: {e}", True
+                        
+    except Exception as e:
+        print(f"[DEBUG] JSON parse error or not a tool use: {e}")
+        pass
+        
+    return ai_response, False

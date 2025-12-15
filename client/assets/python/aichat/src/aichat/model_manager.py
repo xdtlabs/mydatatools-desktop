@@ -15,6 +15,8 @@ from io import BytesIO
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 # --- FIX: Conditionally Import HuggingFacePipeline ---
+# We favor 'langchain_huggingface' which is the modern path, but fallback to 
+# 'langchain_community' to support older environments without crashing.
 try:
     from langchain_huggingface import HuggingFacePipeline
     print("Using langchain_huggingface.HuggingFacePipeline (Recommended).")
