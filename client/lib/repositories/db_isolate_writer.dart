@@ -10,6 +10,7 @@ import 'package:mydatatools/modules/files/services/folder_upsert_service.dart';
 import 'package:mydatatools/repositories/user_repository.dart';
 import 'package:mydatatools/models/tables/chat_session.dart';
 import 'package:mydatatools/models/tables/chat_message.dart';
+import 'package:mydatatools/modules/aichat/repositories/chat_repository.dart';
 
 class DbIsolateWriterClient {
   Isolate? _isolate;
@@ -130,14 +131,10 @@ class DbIsolateWriterClient {
             replyTo?.send({'status': 'ok', 'id': v?.id});
           });
         } else if (data['type'] == 'chat_session') {
-          await db
-              .into(db.chatSessions)
-              .insertOnConflictUpdate(data['object'] as ChatSession);
+          await ChatRepository(db).saveSession(data['object'] as ChatSession);
           replyTo?.send({'status': 'ok'});
         } else if (data['type'] == 'chat_message') {
-          await db
-              .into(db.chatMessages)
-              .insertOnConflictUpdate(data['object'] as ChatMessage);
+          await ChatRepository(db).saveMessage(data['object'] as ChatMessage);
           replyTo?.send({'status': 'ok'});
         } else {
           print("Unknown message type: ${data['type']}");
