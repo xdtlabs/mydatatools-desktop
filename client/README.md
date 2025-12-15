@@ -27,6 +27,11 @@ dart run build_runner build
 flutter build macos --no-tree-shake-icons --release
 ```
 
+* Test
+```bash
+flutter test
+```
+
 * Create DMG  
 @see https://retroportalstudio.medium.com/creating-dmg-file-for-flutter-macos-apps-e448ff1cb0f
 

@@ -16,11 +16,14 @@ import 'package:mydatatools/main.dart';
 class LocalLlmContentGenerator implements ContentGenerator {
   final String systemInstruction;
   final AppLogger logger = AppLogger(null);
+  final http.Client _client;
 
   LocalLlmContentGenerator({
     required this.systemInstruction,
     required String sessionId,
-  }) : _sessionId = sessionId;
+    http.Client? httpClient,
+  }) : _sessionId = sessionId,
+       _client = httpClient ?? http.Client();
 
   final _a2uiMessageController = StreamController<A2uiMessage>.broadcast();
   final _rawGenUiMessageController = StreamController<dynamic>.broadcast();
@@ -75,7 +78,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
         prompt = message.text.trim();
       }
 
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse("$llmServiceUrl/chat"),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
@@ -176,7 +179,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
         body["history"] = history;
       }
 
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse("$llmServiceUrl/start-session"),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
