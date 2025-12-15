@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:mydatatools/main.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:mydatatools/modules/aichat/repositories/aichat_settings_repository.dart';
 
 class PythonManager {
   Process? _pythonProc;
@@ -84,6 +85,13 @@ class PythonManager {
       await Process.run('chmod', ['+x', executablePath]);
     }
 
+    // Get API Keys
+    final settingsRepo = AiChatSettingsRepository();
+    final hfKey = await settingsRepo.getHuggingFaceKey();
+    final googleKey = await settingsRepo.getGeminiKey();
+    final openaiKey = await settingsRepo.getOpenAIKey();
+    final grokKey = await settingsRepo.getGrokKey();
+
     try {
       print("Starting AI Chat service...");
       _pythonProc = await Process.start(
@@ -91,10 +99,10 @@ class PythonManager {
         [],
         workingDirectory: _pythonDir,
         environment: {
-          'HF_TOKEN': '', // Hugging Face token //todo pass from client
-          'GOOGLE_API_KEY': '', // Google API key //todo pass from client
-          'OPENAI_API_KEY': '', // OpenAI API key //todo pass from client
-          'GROK_API_KEY': '', // Grok API key //todo pass from client
+          'HF_TOKEN': hfKey ?? '',
+          'GOOGLE_API_KEY': googleKey ?? '',
+          'OPENAI_API_KEY': openaiKey ?? '',
+          'GROK_API_KEY': grokKey ?? '',
           'MODEL_DOWNLOAD_URL':
               'https://gcs-file-downloader-10805446439.us-central1.run.app', // todo get from remote config
         },

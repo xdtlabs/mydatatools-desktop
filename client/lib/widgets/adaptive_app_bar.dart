@@ -34,13 +34,7 @@ class AdaptiveAppBar extends StatelessWidget implements PreferredSizeWidget {
         title: const Text('My Data', style: TextStyle(color: Colors.black)),
         backgroundColor: themeData.scaffoldBackgroundColor,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black),
-            tooltip: 'User Settings',
-            onPressed: () {},
-          ),
-        ],
+        actions: [],
       ),
     );
   }

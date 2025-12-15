@@ -232,10 +232,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
       await windowManager.setSize(const Size(1200, 800));
       await windowManager.center();
     }();
-    return const MaterialApp(
-      home: FamilyDamApp(),
-      debugShowCheckedModeBanner: false,
-    );
+    return const FamilyDamApp();
   }
 
   Widget _initAppScreen() {
@@ -247,10 +244,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
       await windowManager.setSize(const Size(1200, 800));
       await windowManager.center();
     }();
-    return const MaterialApp(
-      home: FamilyDamApp(),
-      debugShowCheckedModeBanner: false,
-    );
+    return const FamilyDamApp();
   }
 
   @override
