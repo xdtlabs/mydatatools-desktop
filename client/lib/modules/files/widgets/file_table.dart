@@ -148,7 +148,9 @@ class _FileTable extends State<FileTable> {
                           ? Icon(getIconForMimeType(f.contentType))
                           : getImageComponent(isImage, f),
                       const SizedBox(width: 8),
-                      Text(f.name, overflow: TextOverflow.ellipsis),
+                      Expanded(
+                        child: Text(f.name, overflow: TextOverflow.ellipsis),
+                      ),
                     ],
                   ),
                 ),
@@ -247,7 +249,9 @@ class _FileTable extends State<FileTable> {
                     children: [
                       const Icon(Icons.folder),
                       const SizedBox(width: 8),
-                      Text(f.name, overflow: TextOverflow.ellipsis),
+                      Expanded(
+                        child: Text(f.name, overflow: TextOverflow.ellipsis),
+                      ),
                     ],
                   ),
                 ),
