@@ -14,6 +14,7 @@ import 'package:mydatatools/modules/aichat/widgets/aichat_drawer.dart';
 import 'dart:convert'; // For jsonEncode
 import 'package:mydatatools/modules/aichat/repositories/aichat_settings_repository.dart';
 import 'package:mydatatools/modules/aichat/models/chat_ui_models.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 /// The main page for the AI Chat module.
 ///
@@ -102,6 +103,59 @@ class _AichatPage extends State<AichatPage> {
           dataSchema: S.object(),
           widgetBuilder: (context) {
             return GenUiImage(component: context.data as Map<String, dynamic>);
+          },
+        ),
+        CatalogItem(
+          name: 'Text',
+          dataSchema: S.object(),
+          widgetBuilder: (context) {
+            final data = context.data as Map<String, dynamic>;
+            dynamic textVal = data['text'];
+            String text = '';
+            if (textVal is String) {
+              text = textVal;
+            } else if (textVal is Map && textVal.containsKey('literalString')) {
+              text = textVal['literalString'] ?? '';
+            }
+
+            // Sanitize text to remove debug tool_use JSON
+            final codeBlockRegex = RegExp(r'```[\s\S]*?```');
+            text =
+                text.replaceAllMapped(codeBlockRegex, (match) {
+                  if (match.group(0)!.contains('"tool_use"')) {
+                    return '';
+                  }
+                  return match.group(0)!;
+                }).trim();
+
+            return Text(text);
+          },
+        ),
+        CatalogItem(
+          name: 'Markdown',
+          dataSchema: S.object(),
+          widgetBuilder: (context) {
+            final data = context.data as Map<String, dynamic>;
+            // Markdown component usually puts data in 'data' field
+            dynamic textVal = data['data'];
+            String text = '';
+            if (textVal is String) {
+              text = textVal;
+            } else if (textVal is Map && textVal.containsKey('literalString')) {
+              text = textVal['literalString'] ?? '';
+            }
+
+            // Sanitize text to remove debug tool_use JSON
+            final codeBlockRegex = RegExp(r'```[\s\S]*?```');
+            text =
+                text.replaceAllMapped(codeBlockRegex, (match) {
+                  if (match.group(0)!.contains('"tool_use"')) {
+                    return '';
+                  }
+                  return match.group(0)!;
+                }).trim();
+
+            return MarkdownBody(data: text);
           },
         ),
       ]),
@@ -739,6 +793,7 @@ class _AichatPage extends State<AichatPage> {
 
                 if (item is TextMessageItem) {
                   final isUser = item.role == 'user';
+                  // Sanitize text to remove debug tool_use JSON
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
                     child: Align(
