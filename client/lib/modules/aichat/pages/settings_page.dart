@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mydatatools/modules/aichat/repositories/aichat_settings_repository.dart';
 
+/// Page for configuring AI Chat settings, including API keys and model toggles.
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 

@@ -13,25 +13,20 @@ import 'package:mydatatools/models/tables/chat_message.dart' as db_model;
 import 'package:mydatatools/modules/aichat/widgets/aichat_drawer.dart';
 import 'dart:convert'; // For jsonEncode
 import 'package:mydatatools/modules/aichat/repositories/aichat_settings_repository.dart';
+import 'package:mydatatools/modules/aichat/models/chat_ui_models.dart';
 
+/// The main page for the AI Chat module.
+///
+/// This page handles the chat interface, including:
+/// - Displaying the chat history (text and GenUI surfaces).
+/// - Managing the LLM session and switching models.
+/// - Handling user input and sending messages to the LLM.
+/// - Integrating with the [GenUiManager] for dynamic UI components.
 class AichatPage extends StatefulWidget {
   const AichatPage({super.key});
 
   @override
   State<AichatPage> createState() => _AichatPage();
-}
-
-sealed class ChatItem {}
-
-class TextMessageItem extends ChatItem {
-  final String role;
-  final String text;
-  TextMessageItem({required this.role, required this.text});
-}
-
-class GenUiSurfaceItem extends ChatItem {
-  final String surfaceId;
-  GenUiSurfaceItem({required this.surfaceId});
 }
 
 class _AichatPage extends State<AichatPage> {
@@ -69,8 +64,10 @@ class _AichatPage extends State<AichatPage> {
 
     _loadModels();
 
-    // Save initial session
-    _saveSession();
+    // NOTE: We do NOT create a session immediately on init anymore.
+    // A session is created either when the user sends the first message
+    // or explicitly clicks "New Session".
+    // _saveSession();
 
     // listen for changes
     PythonManager.isLLMServiceRunning.addListener(() {
@@ -87,9 +84,13 @@ class _AichatPage extends State<AichatPage> {
               });
             })
             .catchError((error) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to start new session: $error')),
-              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to start new session: $error'),
+                  ),
+                );
+              }
             });
       }
     });
@@ -154,9 +155,11 @@ class _AichatPage extends State<AichatPage> {
         });
         _saveTextMessage('assistant', text).catchError((e) {
           logger.e('Failed to save assistant message: $e');
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed to save message: $e')));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to save message: $e')),
+            );
+          }
         });
       }
     });
@@ -231,6 +234,7 @@ class _AichatPage extends State<AichatPage> {
 
     final history = <String>[];
     final genUiMessagesToRestore = <dynamic>[];
+
     for (final msg in messages) {
       if (msg.role == 'user') {
         _chatItems.add(TextMessageItem(role: 'user', text: msg.content));
@@ -239,57 +243,25 @@ class _AichatPage extends State<AichatPage> {
         _chatItems.add(TextMessageItem(role: 'assistant', text: msg.content));
         history.add(msg.content);
       } else if (msg.role == 'model_genui') {
-        if (msg.data != null) {
-          bool handled = false;
-          try {
-            final dataMap = jsonDecode(msg.data!);
-            if (dataMap is Map) {
-              genUiMessagesToRestore.add(dataMap);
-              if (dataMap.containsKey('beginRendering')) {
-                final br = dataMap['beginRendering'];
-                _addSurfaceId(br['surfaceId']);
-                handled = true;
-              } else if (dataMap.containsKey('surfaceUpdate')) {
-                handled = true;
-              }
-            } else if (dataMap is List) {
-              // **FIXED Iterable Lint Error**: Iterate over the list directly
-              for (var item in dataMap) {
-                genUiMessagesToRestore.add(item);
-                if (item is Map) {
-                  if (item.containsKey('beginRendering')) {
-                    _addSurfaceId(item['beginRendering']['surfaceId']);
-                    handled = true;
-                  } else if (item.containsKey('surfaceUpdate')) {
-                    handled = true;
-                  }
-                }
-              }
+        // Handle GenUI messages
+        final result = _parseGenUiData(msg.data);
+        if (result.handled) {
+          // Add to restoration list if it was valid GenUI data
+          if (result.data != null) {
+            if (result.data is List) {
+              genUiMessagesToRestore.addAll(result.data as List);
+            } else {
+              genUiMessagesToRestore.add(result.data);
             }
-          } catch (e) {
-            logger.e('Error parsing saved GenUI data: $e');
           }
-
-          if (!handled) {
-            // If not a surface command, try to extract text content
-            String displayText = msg.data!;
-            try {
-              final json = jsonDecode(msg.data!);
-              if (json is Map) {
-                if (json.containsKey('text') && json['text'] is String) {
-                  displayText = json['text'];
-                } else if (json.containsKey('content') &&
-                    json['content'] is String) {
-                  displayText = json['content'];
-                }
-              }
-            } catch (e) {
-              // ignore, use raw data
-            }
-            _chatItems.add(
-              TextMessageItem(role: 'assistant', text: displayText),
-            );
-          }
+        } else {
+          // Fallback to text
+          _chatItems.add(
+            TextMessageItem(
+              role: 'assistant',
+              text: result.fallbackText ?? 'GenUI Data',
+            ),
+          );
         }
       }
     }
@@ -304,6 +276,65 @@ class _AichatPage extends State<AichatPage> {
       modelName: _selectedModel,
       history: history,
     );
+  }
+
+  /// Result of parsing GenUI data.
+  /// [handled] is true if it was successfully parsed as GenUI commands (add/update surface).
+  /// [data] contains the parsed JSON object/list.
+  /// [fallbackText] contains the text representation if it wasn't a UI command.
+  ({bool handled, dynamic data, String? fallbackText}) _parseGenUiData(
+    String? rawData,
+  ) {
+    if (rawData == null) {
+      return (handled: false, data: null, fallbackText: null);
+    }
+
+    try {
+      final decoded = jsonDecode(rawData);
+      bool foundCommand = false;
+
+      // Function to check a single map for surface commands
+      bool checkMap(Map m) {
+        if (m.containsKey('beginRendering')) {
+          _addSurfaceId(m['beginRendering']['surfaceId']);
+          return true;
+        } else if (m.containsKey('surfaceUpdate')) {
+          return true;
+        }
+        return false;
+      }
+
+      if (decoded is Map) {
+        if (checkMap(decoded)) {
+          foundCommand = true;
+        }
+      } else if (decoded is List) {
+        for (var item in decoded) {
+          if (item is Map && checkMap(item)) {
+            foundCommand = true;
+          }
+        }
+      }
+
+      if (foundCommand) {
+        return (handled: true, data: decoded, fallbackText: null);
+      }
+
+      // Try to extract text content if not a command
+      String text = rawData;
+      if (decoded is Map) {
+        if (decoded.containsKey('text') && decoded['text'] is String) {
+          text = decoded['text'];
+        } else if (decoded.containsKey('content') &&
+            decoded['content'] is String) {
+          text = decoded['content'];
+        }
+      }
+      return (handled: false, data: decoded, fallbackText: text);
+    } catch (e) {
+      // Not JSON or parsing error
+      return (handled: false, data: null, fallbackText: rawData);
+    }
   }
 
   Future<void> _loadModels() async {
@@ -470,6 +501,9 @@ class _AichatPage extends State<AichatPage> {
       'type': 'chat_session',
       'object': session,
     });
+    // Refresh the drawer list to show the new session
+    // (Assuming Drawer is listening or rebuilding, currently it loads on init.
+    // Ideally we should use a stream or a provider for sessions)
   }
 
   Future<void> _saveTextMessage(String role, String text) async {
@@ -612,6 +646,7 @@ class _AichatPage extends State<AichatPage> {
                       history: null, // Pass null to preserve history on server
                     )
                     .then((_) {
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Switched to $selectedModelLabel'),
@@ -619,6 +654,7 @@ class _AichatPage extends State<AichatPage> {
                       );
                     })
                     .catchError((error) {
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Failed to switch model: $error'),
@@ -665,6 +701,9 @@ class _AichatPage extends State<AichatPage> {
               final newId = UuidV4().generate().replaceAll('-', '');
 
               // Save new session to DB immediately so it exists
+              // NOTE: For 'New Session' button, we DO want to create it immediately
+              // so the user sees context switch.
+              _saveSession();
               final session = ChatSession(
                 id: newId,
                 model: _selectedModel,
@@ -716,7 +755,7 @@ class _AichatPage extends State<AichatPage> {
                         decoration: BoxDecoration(
                           color:
                               isUser
-                                  ? Colors.blueAccent.withOpacity(0.9)
+                                  ? Colors.blueAccent.withValues(alpha: 0.9)
                                   : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(12.0),
                         ),
@@ -751,7 +790,7 @@ class _AichatPage extends State<AichatPage> {
                 BoxShadow(
                   offset: const Offset(0, -2),
                   blurRadius: 5,
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                 ),
               ],
             ),
@@ -763,7 +802,7 @@ class _AichatPage extends State<AichatPage> {
                   BoxShadow(
                     offset: const Offset(0, 3),
                     blurRadius: 5,
-                    color: Colors.grey.withOpacity(0.5),
+                    color: Colors.grey.withValues(alpha: 0.5),
                   ),
                 ],
               ),

@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mydatatools/app_constants.dart';
 
+/// Repository for managing AI Chat settings using [FlutterSecureStorage].
+///
+/// Handles storage of API keys (HuggingFace, Gemini, OpenAI, Grok) and
+/// enabled/disabled states for specific models.
 class AiChatSettingsRepository {
   static final AiChatSettingsRepository _instance =
       AiChatSettingsRepository._internal();

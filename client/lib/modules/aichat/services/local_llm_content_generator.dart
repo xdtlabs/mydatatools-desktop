@@ -6,6 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/main.dart';
 
+/// A content generator that communicates with a local LLM service via HTTP.
+///
+/// This service handles:
+/// - Sending chat messages to the Python backend.
+/// - receiving streaming text responses.
+/// - Receiving and parsing GenUI messages.
+/// - Managing the LLM session state on the backend.
 class LocalLlmContentGenerator implements ContentGenerator {
   final String systemInstruction;
   final AppLogger logger = AppLogger(null);
@@ -20,8 +27,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
   final _textResponseController = StreamController<String>.broadcast();
   final _errorController = StreamController<ContentGeneratorError>.broadcast();
   final _isProcessing = ValueNotifier<bool>(false);
-  // We still keep local history for UI purposes if needed, but don't send it to server
-  final List<ChatMessage> _localHistory = [];
+
   // Generate a unique session ID for this instance
   String _sessionId;
 
@@ -67,7 +73,6 @@ class LocalLlmContentGenerator implements ContentGenerator {
       // Add current message
       if (message is UserMessage) {
         prompt = message.text.trim();
-        _localHistory.add(message);
       }
 
       final response = await http.post(
@@ -89,9 +94,6 @@ class LocalLlmContentGenerator implements ContentGenerator {
 
         // logger.d('Received aiResponse type: ${aiResponse.runtimeType}');
         // logger.d('Received aiResponse: $aiResponse');
-
-        // Add response to local history
-        _localHistory.add(InternalMessage(aiResponse.toString()));
 
         if (aiResponse.trim().startsWith('[') &&
             aiResponse.trim().endsWith(']')) {
@@ -146,6 +148,11 @@ class LocalLlmContentGenerator implements ContentGenerator {
     }
   }
 
+  /// Starts a new session with the LLM backend.
+  ///
+  /// [sessionId] is the unique ID for the session.
+  /// [modelName] is the name of the model to use (e.g., 'google/gemma-3-4b-it').
+  /// [history] is an optional list of previous messages to restore context.
   Future<void> startSession({
     required String sessionId,
     String modelName = 'google/gemma-3-4b-it',
@@ -189,6 +196,9 @@ class LocalLlmContentGenerator implements ContentGenerator {
     }
   }
 
+  /// Restores GenUI history by re-emitting GenUI messages.
+  ///
+  /// This allows the UI to rebuild the state of GenUI components when reloading a session.
   void restoreHistory(List<dynamic> messageJsons) {
     for (final messageJson in messageJsons) {
       try {
