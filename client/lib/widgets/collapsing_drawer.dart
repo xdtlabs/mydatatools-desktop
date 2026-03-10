@@ -9,30 +9,23 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 
 class CollapsingDrawer extends StatefulWidget {
-  final bool isSidebarLockedOpen;
-  const CollapsingDrawer({super.key, this.isSidebarLockedOpen = true});
+  const CollapsingDrawer({super.key});
 
   @override
   State<CollapsingDrawer> createState() => _CollapsingDrawerState();
 }
 
-class _CollapsingDrawerState extends State<CollapsingDrawer>
-    with SingleTickerProviderStateMixin {
-  final double maxWidth = 250;
-  final double minWidth = 60;
-  bool isCollapsed = false;
+class _CollapsingDrawerState extends State<CollapsingDrawer> {
   bool isLoading = true;
-  Animation<double>? widthAnimation;
-  int currentSelectedIndex = 0;
   GetAppsService? _getAppsService;
   StreamSubscription? _appsSub;
   StreamSubscription? _loadingSub;
   List<m.App> apps = [];
+  int selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-
 
     /////////////////////////////////////////////////
     // Load Apps
@@ -59,7 +52,6 @@ class _CollapsingDrawerState extends State<CollapsingDrawer>
 
   @override
   void dispose() {
-    //_animationController?.dispose();
     _appsSub?.cancel();
     _loadingSub?.cancel();
     super.dispose();
@@ -67,164 +59,108 @@ class _CollapsingDrawerState extends State<CollapsingDrawer>
 
   @override
   Widget build(BuildContext context) {
-
-    //final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final theme = Theme.of(context);
-    double iconPadding = isCollapsed ? 16.0 : 16.0;
-
-    isCollapsed = widget.isSidebarLockedOpen;
-    final double currentWidth = isCollapsed
-        ? minWidth
-        : maxWidth;
 
     var collectionApps = apps.where((e) => e.group == 'collections').toList();
     var appApps = apps.where((e) => e.group == 'app').toList();
 
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SizedBox(
+        width: 72, 
+        child: Center(child: CircularProgressIndicator())
+      );
     }
 
+    final destinations = <NavigationRailDestination>[
+      const NavigationRailDestination(
+        icon: Icon(Icons.home),
+        label: Text('Home'),
+      ),
+      if (appApps.isNotEmpty || collectionApps.isNotEmpty)
+        const NavigationRailDestination(
+          icon: Divider(indent: 8, endIndent: 8),
+          label: Text(''),
+          disabled: true,
+        ),
+      ...appApps.map((app) {
+        return NavigationRailDestination(
+          icon: Icon(IconData(app.icon ?? 0xe08f, fontFamily: 'MaterialIcons')),
+          label: Text(app.name),
+        );
+      }),
+      if (appApps.isNotEmpty && collectionApps.isNotEmpty)
+        const NavigationRailDestination(
+          icon: Divider(indent: 8, endIndent: 8),
+          label: Text(''),
+          disabled: true,
+        ),
+      ...collectionApps.map((app) {
+        return NavigationRailDestination(
+          icon: Icon(IconData(app.icon ?? 0xe08f, fontFamily: 'MaterialIcons')),
+          label: Text(app.name),
+        );
+      }),
+    ];
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: currentWidth,
-      color: theme.scaffoldBackgroundColor, // Revert to gray
-      child: SizedBox(
-        width: currentWidth,
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor, // Revert to gray
-            border: Border(
-              right: BorderSide(color: theme.dividerColor, width: 1),
+    return NavigationRail(
+      selectedIndex: selectedIndex,
+      onDestinationSelected: (int index) async {
+        if (destinations[index].disabled) return;
+
+        setState(() {
+          selectedIndex = index;
+        });
+        
+        if (index == 0) {
+          GoRouter.of(context).go("/");
+          return;
+        } 
+        
+        int currentIndex = 1; // Start after Home
+        if (appApps.isNotEmpty || collectionApps.isNotEmpty) {
+          currentIndex++; // Skip first divider
+        }
+        
+        if (index < currentIndex + appApps.length) {
+          GoRouter.of(context).go(appApps[index - currentIndex].route);
+          return;
+        }
+        currentIndex += appApps.length;
+        
+        if (appApps.isNotEmpty && collectionApps.isNotEmpty) {
+          currentIndex++; // Skip second divider
+        }
+        
+        if (index < currentIndex + collectionApps.length) {
+          GoRouter.of(context).go(collectionApps[index - currentIndex].route);
+          return;
+        }
+      },
+      labelType: NavigationRailLabelType.none,
+      extended: false,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      destinations: destinations,
+      trailing: Expanded(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.lock),
+              tooltip: 'Logout',
+              onPressed: () async {
+                // Logout logic
+                GetUserService.instance.invoke(GetUserServiceCommand(null));
+                FlutterSecureStorage storage = const FlutterSecureStorage();
+                await storage.write(
+                  key: AppConstants.securePassword,
+                  value: null,
+                );
+                if (context.mounted) {
+                  GoRouter.of(context).go('/?action=logout');
+                }
+              },
             ),
-          ),
-          child: Column(
-            // Important: Remove any padding from the ListView.
-            //padding: EdgeInsets.zero,
-            children: [
-              ListTile(
-                leading: Icon(
-                  Icons.home,
-                  size: 24.0,
-                  color: theme.colorScheme.primary,
-                ),
-                title: isCollapsed ? null : const Text('Home'),
-                contentPadding: EdgeInsets.symmetric(horizontal: iconPadding),
-                onTap: () {
-                  GoRouter.of(context).go("/");
-                },
-              ),
-
-
-
-              /// Apps build to work with the different locations
-              SizedBox(
-                height: 38,
-                child: ListTile(
-                  title:
-                  isCollapsed
-                      ? const Text('')
-                      : const Text('Applications'),
-                  onTap: null,
-                ),
-              ),
-              ...appApps.map((app) {
-                return ListTile(
-                  leading: Icon(
-                    IconData(app.icon ?? 0xe08f, fontFamily: 'MaterialIcons'),
-                    size: 24.0,
-                    color: theme.colorScheme.primary,
-                  ),
-                  title: isCollapsed ? null : Text(app.name, softWrap: false),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: iconPadding,
-                  ),
-                  onTap: () {
-                    GoRouter.of(context).go(app.route);
-                  },
-                );
-              }),
-
-
-
-
-              /// List of different collection apps
-              SizedBox(
-                height: 38,
-                child: ListTile(
-                  title:
-                      isCollapsed
-                          ? const Text('')
-                          : const Text('Collections'),
-                  onTap: null,
-                ),
-              ),
-
-
-              ...collectionApps.map((app) {
-                return ListTile(
-                  leading: Icon(
-                    IconData(app.icon ?? 0xe08f, fontFamily: 'MaterialIcons'),
-                    size: 24.0,
-                    color: theme.colorScheme.primary,
-                  ),
-                  title: isCollapsed ? null : Text(app.name, softWrap: false),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: iconPadding,
-                  ),
-                  onTap: () {
-                    GoRouter.of(context).go(app.route);
-                  },
-                );
-              }),
-
-
-              const Spacer(),
-              Divider(color: theme.dividerColor, height: 4.0),
-              ListTile(
-                leading: Icon(
-                  Icons.logout,
-                  size: 24.0,
-                  color: theme.colorScheme.primary,
-                ),
-                title: isCollapsed ? null : const Text('Logout'),
-                contentPadding: EdgeInsets.symmetric(horizontal: iconPadding),
-                onTap: () async {
-                  //clear local provider
-                  GetUserService.instance.invoke(GetUserServiceCommand(null));
-
-                  //clear remembered password
-                  FlutterSecureStorage storage = const FlutterSecureStorage();
-                  await storage.write(
-                    key: AppConstants.securePassword,
-                    value: null,
-                  );
-
-                  //reload router
-                  if( context.mounted ) {
-                    GoRouter.of(context).go('/?action=logout');
-                  }
-                },
-              ),
-              /**
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            isCollapsed = !isCollapsed;
-                            isCollapsed
-                                ? _animationController?.forward()
-                                : _animationController?.reverse();
-                          });
-                        },
-                        child: isCollapsed
-                            ? const Icon(Icons.last_page)
-                            : const Icon(Icons.first_page)),
-                  ),
-                  **/
-              const SizedBox(height: 10.0),
-            ],
           ),
         ),
       ),

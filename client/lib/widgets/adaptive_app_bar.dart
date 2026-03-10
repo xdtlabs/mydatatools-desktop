@@ -4,13 +4,10 @@ import 'package:flutter/material.dart';
 class AdaptiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   const AdaptiveAppBar({
     super.key,
-    required this.onMenuPressed,
-    this.isSidebarLockedOpen = true,
-    isDesktop = !kIsWeb,
+    this.isDesktop = !kIsWeb,
   });
 
-  final VoidCallback onMenuPressed;
-  final bool isSidebarLockedOpen;
+  final bool isDesktop;
 
   @override
   Size get preferredSize => const Size(300, 72);
@@ -18,11 +15,6 @@ class AdaptiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
-    final menuIcon =
-        (isSidebarLockedOpen)
-            ? const Icon(Icons.menu_rounded, color: Colors.black54)
-            : const Icon(Icons.menu_open_rounded, color: Colors.black54);
-    //final localizations = GalleryLocalizations.of(context)!;
     return PreferredSize(
       preferredSize: const Size.fromHeight(64.0), // GCP is a bit shorter
       child: Container(
@@ -35,9 +27,7 @@ class AdaptiveAppBar extends StatelessWidget implements PreferredSizeWidget {
         child: AppBar(
           toolbarHeight: 64,
           centerTitle: false,
-          automaticallyImplyLeading: true,
-          leading: IconButton(icon: menuIcon, onPressed: () => onMenuPressed()),
-          leadingWidth: 70, //match nav bar
+          automaticallyImplyLeading: false,
           title: Text(
             'My Data', 
             style: themeData.textTheme.titleLarge?.copyWith(
