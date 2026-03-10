@@ -86,13 +86,14 @@ class _CollapsingDrawerState extends State<CollapsingDrawer>
 
 
     return AnimatedContainer(
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       width: currentWidth,
-      color: theme.scaffoldBackgroundColor,
+      color: theme.scaffoldBackgroundColor, // Revert to gray
       child: SizedBox(
         width: currentWidth,
         child: Container(
           decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor, // Revert to gray
             border: Border(
               right: BorderSide(color: theme.dividerColor, width: 1),
             ),
