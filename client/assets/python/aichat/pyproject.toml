@@ -41,3 +41,8 @@ use_venv = false
 where = ["."]
 include = ["src*"]
 namespaces = false
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.19.0",
+]
