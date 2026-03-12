@@ -7,7 +7,6 @@ specific API endpoint and handles request processing, validation, and response g
 """
 from typing import Optional, Dict, Any
 from fastapi import HTTPException
-from PIL import Image
 
 
 from .models import ChatRequest, StartSessionRequest, EmbeddingRequest
@@ -15,10 +14,9 @@ from .model_manager import (
     load_local_model,
     load_embedding_model,
     generate_text_embedding,
-    generate_image_embedding,
-    decode_base64_image, load_gemini_model
+    load_gemini_model
 )
-from .utils import get_local_path, download_gguf_model_if_needed
+from .utils import get_local_path, find_local_model, download_gguf_model
 from .state import (
     get_llm_instance, set_llm_instance,
     get_current_model_id, set_current_model_id,
@@ -114,15 +112,14 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
         if get_current_model_id() == model_id:
             return {"status": "success", "message": f"Session already active with model: {model_id}", "model": model_id}
         
-        # 2. Download files if necessary
+        # 2. Locate the model file — no automatic download
         if model_id != "gemini":
-            try:
-                download_gguf_model_if_needed(model_id, filename, local_path)
-            except Exception as e:
-                print(f"[STARTUP] Error downloading model {model_id}/{filename}: {e}")
+            model_path = find_local_model(request.filename, get_local_path(model_id))
+            if model_path is None:
                 raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to download model files for {model_id}/{filename}. Check logs and Hugging Face authentication."
+                    status_code=404,
+                    detail=f"Model file '{request.filename}' not found locally. "
+                           f"Use the /download-model endpoint to download it first."
                 )
         
         # 3. Load the model
@@ -146,7 +143,7 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
                 else:
                     new_llm = load_gemini_model()
             else:
-                new_llm = load_local_model(model_name=model_id, filename=filename, local_dir=local_path)
+                new_llm = load_local_model(model_name=model_id, model_path=model_path)
             
             set_llm_instance(new_llm)
             set_current_model_id(model_id)
@@ -337,3 +334,49 @@ async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
             detail=f"Failed to generate embedding: {e}"
         )
 
+
+async def download_model(request: StartSessionRequest) -> Dict[str, Any]:
+    """
+    Download a GGUF model from Hugging Face Hub.
+
+    This endpoint handles model downloads explicitly — start_session will never
+    trigger a download automatically. Call this from the settings panel when a
+    user wants to add a new model.
+
+    Args:
+        request (StartSessionRequest): Request containing model_name and filename
+
+    Returns:
+        Dict[str, Any]: Success response with the local path to the downloaded file
+
+    Raises:
+        HTTPException: If the download fails
+    """
+    model_id = request.model_name
+    filename = request.filename
+    local_path = get_local_path(model_id)
+
+    print(f"[DOWNLOAD] Request to download {model_id}/{filename}")
+
+    # Check if already present before downloading
+    existing = find_local_model(filename, local_path)
+    if existing:
+        return {
+            "status": "success",
+            "message": f"Model '{filename}' already exists locally.",
+            "model_path": existing
+        }
+
+    try:
+        downloaded_path = download_gguf_model(model_id, filename, local_path)
+        return {
+            "status": "success",
+            "message": f"Model '{filename}' downloaded successfully.",
+            "model_path": downloaded_path
+        }
+    except Exception as e:
+        print(f"[ERROR] Download failed for {model_id}/{filename}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download model '{filename}' from '{model_id}': {e}"
+        )

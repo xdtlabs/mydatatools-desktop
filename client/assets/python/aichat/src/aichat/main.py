@@ -35,7 +35,8 @@ app = FastAPI(
 
 # Register API route handlers
 app.get("/", summary="Health Check")(routes.health_check)
-app.post("/start-session", summary="Dynamically load a Hugging Face model for chat")(routes.start_session)
+app.post("/start-session", summary="Load a local GGUF model for chat")(routes.start_session)
+app.post("/download-model", summary="Download a GGUF model from Hugging Face Hub")(routes.download_model)
 app.post("/chat", summary="Generate a chat response using the currently loaded model")(routes.generate_chat_response)
 app.post("/embedding", summary="Generate embeddings for text or image using Gemma-3-4B")(routes.generate_embedding)
 

@@ -1,24 +1,17 @@
 """
 Model loading and management functionality.
 
-This module handles all model-related operations including loading models from disk,
-managing HuggingFace pipelines, generating embeddings, and processing images.
-It provides the core functionality for both chat and embedding models.
+This module handles loading and managing GGUF models via LlamaCpp and
+Google Gemini API models. It provides the core functionality for both
+chat and embedding models.
 """
 import os
-import torch
-from typing import Any, List, Tuple
-from PIL import Image
-import base64
-from io import BytesIO
+from typing import Any, List
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.llms import LlamaCpp
 
-from transformers import AutoModelForCausalLM, AutoProcessor
-
 from .config import MAX_NEW_TOKENS, TEMPERATURE, DO_SAMPLE
-from .utils import get_local_path, download_gguf_model_if_needed
 
 
 def load_gemini_model() -> ChatGoogleGenerativeAI:
@@ -57,34 +50,27 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     return llm
 
 
-def load_local_model(model_name: str, filename: str, local_dir: str) -> LlamaCpp:
+def load_local_model(model_name: str, model_path: str) -> LlamaCpp:
     """
     Load a language model from disk into a LangChain LlamaCpp object.
     
-    This function ensures the required GGUF file is available locally,
-    then initializes the llama-cpp-python binding wrapped in LangChain.
-    
     Args:
-        model_name (str): HF repo ID or custom name
-        filename (str): The specific GGUF file name
-        local_dir (str): Path to the directory for storing/checking model files
+        model_name (str): HF repo ID or display name (used for logging only)
+        model_path (str): Full absolute path to the .gguf file
         
     Returns:
         LlamaCpp: Wrapped pipeline ready for text generation
         
     Raises:
-        Exception: If model loading fails due to missing files or corrupted architecture.
+        Exception: If model loading fails.
 
     Example:
-        >>> llm = load_local_model("bartowski/gemma", "gemma-3-4b.gguf", "./models")
+        >>> llm = load_local_model("bartowski/gemma", "/path/to/gemma-3-4b.gguf")
         >>> response = llm.invoke("Hi!")
     """
-    print(f"[LOADER] Attempting to load GGUF model: {model_name}/{filename}")
+    print(f"[LOADER] Attempting to load GGUF model: {model_name} from {model_path}")
     
-    # 1. Download or locate the GGUF file
-    model_path = download_gguf_model_if_needed(model_name, filename, local_dir)
-    
-    # 2. Initialize LlamaCpp
+    # Initialize LlamaCpp directly from the resolved path
     print(f"[LOADER] Initializing LlamaCpp from {model_path}...")
     llm = LlamaCpp(
         model_path=model_path,
@@ -173,81 +159,3 @@ def generate_text_embedding(text: str, model: Any, processor: Any) -> List[float
         # Fallback if the underlying method isn't available easily
         raise ValueError("Provided model does not support LlamaCpp embedding generation correctly")
 
-
-def generate_image_embedding(image: Image.Image, model: Any, processor: Any) -> List[float]:
-    """
-    Generate embeddings for image input using a loaded multimodal model.
-    
-    Processes images through a multimodal model to extract high-dimensional
-    vector representations. Similar to text embeddings but handles visual data.
-    
-    Args:
-        image (PIL.Image.Image): Input image to generate embeddings for
-        model (Any): Loaded multimodal model with image processing capabilities
-        processor (Any): Model processor for handling image inputs
-        
-    Returns:
-        List[float]: A list of float values representing the image embedding
-        
-    Example:
-        >>> from PIL import Image
-        >>> image = Image.open("photo.jpg")
-        >>> embedding = generate_image_embedding(image, model, processor)
-        >>> print(f"Image embedding dimension: {len(embedding)}")
-    """
-    # Prepare image input
-    inputs = processor(images=image, return_tensors="pt")
-    
-    # Move inputs to same device as model
-    device = next(model.parameters()).device
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    
-    with torch.no_grad():
-        # Get hidden states from the model
-        outputs = model(**inputs, output_hidden_states=True)
-        # Use the last hidden state and average pool across sequence length
-        last_hidden_state = outputs.hidden_states[-1]  # [batch_size, seq_len, hidden_dim]
-        # Average pooling across the sequence dimension
-        embeddings = torch.mean(last_hidden_state, dim=1)  # [batch_size, hidden_dim]
-        
-    return embeddings.squeeze().cpu().numpy().tolist()
-
-
-def decode_base64_image(base64_string: str) -> Image.Image:
-    """
-    Decode a base64-encoded string into a PIL Image object.
-    
-    Handles base64 image data, including data URLs with prefixes like
-    'data:image/png;base64,'. Automatically converts images to RGB format
-    for consistent processing.
-    
-    Args:
-        base64_string (str): Base64-encoded image data, optionally with data URL prefix
-        
-    Returns:
-        PIL.Image.Image: Decoded image in RGB format
-        
-    Raises:
-        ValueError: If the base64 string is invalid or cannot be decoded as an image
-        
-    Example:
-        >>> base64_data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
-        >>> image = decode_base64_image(base64_data)
-        >>> print(f"Image size: {image.size}")
-    """
-    try:
-        # Remove data URL prefix if present (e.g., "data:image/png;base64,")
-        if base64_string.startswith('data:image'):
-            base64_string = base64_string.split(',')[1]
-        
-        # Decode base64 data to bytes
-        image_data = base64.b64decode(base64_string)
-        
-        # Create PIL Image from bytes
-        image = Image.open(BytesIO(image_data))
-        
-        # Ensure consistent RGB format for processing
-        return image.convert('RGB')
-        
-    except Exception as e:
-        raise ValueError(f"Invalid base64 image data: {e}")

@@ -92,61 +92,110 @@ def handle_local_archive(archive_path: str, target_dir: str) -> bool:
         return False
 
 
-def download_gguf_model_if_needed(model_id: str, filename: str, local_path: str) -> str:
+def find_local_model(filename: str, local_path: str) -> Optional[str]:
     """
-    Ensure a GGUF model is available locally, downloading if necessary.
-    
-    This function implements a fallback strategy:
-    1. Check if model is bundled via PyInstaller (sys._MEIPASS)
-    2. Check if the specific filename exists in the target local_path
-    3. Download from Hugging Face Hub as last resort using hf_hub_download
-    
+    Search for a GGUF model file across all known local locations.
+
+    Checks the following locations in order:
+    1. PyInstaller _MEIPASS bundle directory (onefile builds)
+    2. The '_internal/models/' folder next to the executable (onedir/COLLECT builds)
+    3. The explicit local_path directory
+
+    For bundled paths, also does a fuzzy match on the filename to handle
+    prefix differences (e.g. 'google_gemma-3-4b-it-Q4_K_M.gguf' vs 'gemma-3-4b-it-Q4_K_M.gguf').
+
     Args:
-        model_id (str): Hugging Face model repository identifier
-        filename (str): The specific GGUF filename to download
-        local_path (str): Target directory for the model files
-        
+        filename (str): The GGUF filename to search for.
+        local_path (str): Fallback directory to check.
+
     Returns:
-        str: The absolute path to the .gguf file
-        
-    Raises:
-        Exception: If download fails
-        
-    Example:
-        >>> path = download_gguf_model_if_needed("bartowski/gemma", "gemma.gguf", "./models")
+        Optional[str]: Absolute path to the model file, or None if not found.
     """
     import sys
-    from huggingface_hub import hf_hub_download
-    
-    # 1. Check bundled PyInstaller path first
+
+    def _fuzzy_find(directory: str, target_filename: str) -> Optional[str]:
+        """Find a file in directory that exactly matches or contains target_filename as substring."""
+        if not os.path.isdir(directory):
+            return None
+        # Exact match first
+        exact = os.path.join(directory, target_filename)
+        if os.path.exists(exact):
+            return exact
+        # Fuzzy: find any .gguf file whose name contains the target (handles prefix differences)
+        for f in os.listdir(directory):
+            if f.endswith('.gguf') and target_filename in f:
+                found = os.path.join(directory, f)
+                print(f"[LOADER] Fuzzy-matched bundled model: {f}")
+                return found
+        return None
+
+    # 1. PyInstaller onefile: sys._MEIPASS/models/
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        bundled_path = os.path.join(sys._MEIPASS, 'models', filename)
-        print(f"[LOADER] Checking for bundled PyInstaller model at {bundled_path}")
-        if os.path.exists(bundled_path):
-            print(f"[LOADER] Found bundled PyInstaller model at {bundled_path}.")
-            return bundled_path
-    else:
-        print("[LOADER] Not running as a PyInstaller bundle. Skipping embedded model check.")
-            
-    # 2. Check intended local path
-    target_file_path = os.path.join(local_path, filename)
-    print(f"[LOADER] Checking for local model fallback at {target_file_path}")
-    if os.path.exists(target_file_path):
-        print(f"[LOADER] Local model found at {target_file_path}. Skipping download.")
-        return target_file_path
-        
-    # 3. Download from HF Hub
-    print(f"[LOADER] Local model not found. Starting download of {filename} from {model_id}...")
-    try:
-        os.makedirs(local_path, exist_ok=True)
-        downloaded_path = hf_hub_download(
-            repo_id=model_id,
-            filename=filename,
-            local_dir=local_path
-        )
-        print(f"[LOADER] Model download complete: {downloaded_path}")
-        return downloaded_path
-    except Exception as dl_error:
-        print(f"[ERROR] Error during model download for {model_id}/{filename}: {dl_error}")
-        raise
-    
+        meipass_models = os.path.join(sys._MEIPASS, 'models')
+        print(f"[LOADER] Checking _MEIPASS bundle: {meipass_models}")
+        found = _fuzzy_find(meipass_models, filename)
+        if found:
+            print(f"[LOADER] Found model in _MEIPASS: {found}")
+            return found
+
+    # 2. PyInstaller onedir/COLLECT: <exe_dir>/_internal/models/
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+        internal_models = os.path.join(exe_dir, '_internal', 'models')
+        print(f"[LOADER] Checking _internal/models bundle: {internal_models}")
+        found = _fuzzy_find(internal_models, filename)
+        if found:
+            print(f"[LOADER] Found model in _internal/models: {found}")
+            return found
+
+    # 3. Explicit local_path (user-downloaded models)
+    print(f"[LOADER] Checking local path: {local_path}")
+    found = _fuzzy_find(local_path, filename)
+    if found:
+        print(f"[LOADER] Found model at local path: {found}")
+        return found
+
+    return None
+
+
+def download_gguf_model(model_id: str, filename: str, local_path: str) -> str:
+    """
+    Download a GGUF model from Hugging Face Hub into local_path.
+
+    This should only be called explicitly (e.g., from the /download-model endpoint),
+    never automatically at startup.
+
+    Args:
+        model_id (str): Hugging Face model repository identifier.
+        filename (str): The specific GGUF filename to download.
+        local_path (str): Target directory for the downloaded file.
+
+    Returns:
+        str: Absolute path to the downloaded .gguf file.
+
+    Raises:
+        Exception: If the download fails.
+    """
+    from huggingface_hub import hf_hub_download
+
+    print(f"[LOADER] Downloading {filename} from {model_id} into {local_path}...")
+    os.makedirs(local_path, exist_ok=True)
+    downloaded_path = hf_hub_download(
+        repo_id=model_id,
+        filename=filename,
+        local_dir=local_path
+    )
+    print(f"[LOADER] Download complete: {downloaded_path}")
+    return downloaded_path
+
+
+def download_gguf_model_if_needed(model_id: str, filename: str, local_path: str) -> str:
+    """
+    DEPRECATED: Use find_local_model() + download_gguf_model() separately.
+
+    Kept for backward compatibility. Finds an existing model or downloads it.
+    """
+    found = find_local_model(filename, local_path)
+    if found:
+        return found
+    return download_gguf_model(model_id, filename, local_path)
