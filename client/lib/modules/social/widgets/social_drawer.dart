@@ -42,7 +42,7 @@ class _SocialDrawerState extends State<SocialDrawer> {
 
     return SizedBox.expand(
       child: Container(
-        color: theme.scaffoldBackgroundColor,
+        color: Colors.transparent,
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [

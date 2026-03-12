@@ -4,13 +4,10 @@ import 'package:flutter/material.dart';
 class AdaptiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   const AdaptiveAppBar({
     super.key,
-    required this.onMenuPressed,
-    this.isSidebarLockedOpen = true,
-    isDesktop = !kIsWeb,
+    this.isDesktop = !kIsWeb,
   });
 
-  final VoidCallback onMenuPressed;
-  final bool isSidebarLockedOpen;
+  final bool isDesktop;
 
   @override
   Size get preferredSize => const Size(300, 72);
@@ -18,29 +15,36 @@ class AdaptiveAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
-    final menuIcon =
-        (isSidebarLockedOpen)
-            ? Icon(Icons.menu_rounded)
-            : Icon(Icons.menu_open_rounded);
-    //final localizations = GalleryLocalizations.of(context)!;
     return PreferredSize(
-      preferredSize: const Size.fromHeight(72.0),
-      child: AppBar(
-        toolbarHeight: 72,
-        centerTitle: false,
-        automaticallyImplyLeading: true,
-        leading: IconButton(icon: menuIcon, onPressed: () => onMenuPressed()),
-        leadingWidth: 70, //match nav bar
-        title: const Text('My Data', style: TextStyle(color: Colors.black)),
-        backgroundColor: themeData.scaffoldBackgroundColor,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black),
-            tooltip: 'User Settings',
-            onPressed: () {},
+      preferredSize: const Size.fromHeight(64.0), // GCP is a bit shorter
+      child: Container(
+        decoration: BoxDecoration(
+          color: themeData.scaffoldBackgroundColor, // Match the gray background
+          border: const Border(
+             bottom: BorderSide(color: Colors.black12, width: 1.0),
+          )
+        ),
+        child: AppBar(
+          toolbarHeight: 64,
+          centerTitle: false,
+          automaticallyImplyLeading: false,
+          title: Text(
+            'My Data', 
+            style: themeData.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w400,
+              color: Colors.black87,
+            ),
           ),
-        ],
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings, color: Colors.black54),
+              tooltip: 'User Settings',
+              onPressed: () {},
+            ),
+          ],
+        ),
       ),
     );
   }

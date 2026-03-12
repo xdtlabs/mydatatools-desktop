@@ -42,7 +42,7 @@ class _EmailDrawer extends State<EmailDrawer> {
     return SizedBox.expand(
       child: Container(
         height: double.infinity,
-        color: theme.scaffoldBackgroundColor,
+        color: Colors.transparent,
         padding: const EdgeInsets.all(8),
         child: Scaffold(
           backgroundColor: Colors.transparent,

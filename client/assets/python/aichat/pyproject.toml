@@ -8,7 +8,7 @@ authors = [
 dependencies = [
     "uvicorn[standard]==0.38.0",
     "pydantic==2.12.3",
-    "transformers==4.57.1",
+    "llama-cpp-python>=0.3.7",
     "sentencepiece==0.2.1",
     "Pillow==10.4.0",
     "numpy==1.26.4",
@@ -18,11 +18,10 @@ dependencies = [
     "fastapi==0.120.4",
     "langchain-core==0.3.79",
     "langchain==0.3.27",
-    "langchain-huggingface==0.3.1",
     "huggingface-hub==0.36.0",
     "torch==2.8.0",
-    "accelerate==1.10.1",
     "langchain-google-genai",
+    "langchain-community",
 ]
 requires-python = ">=3.11,<3.14"
 readme = "README.md"
@@ -41,3 +40,8 @@ use_venv = false
 where = ["."]
 include = ["src*"]
 namespaces = false
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.19.0",
+]

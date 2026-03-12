@@ -1,5 +1,6 @@
 import 'package:mydatatools/app_router.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class FamilyDamApp extends StatelessWidget {
   const FamilyDamApp({super.key});
@@ -13,26 +14,44 @@ class FamilyDamApp extends StatelessWidget {
       routerConfig: AppRouter.instance,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.deepPurple,
-        dividerColor: Colors.black12,
-        scaffoldBackgroundColor: Colors.white70,
-        appBarTheme: AppBarTheme(
-          // ... AppBar theme properties
-          backgroundColor: Colors.transparent,
-
+        scaffoldBackgroundColor: const Color(0xFFF1F3F4), // Google Cloud Gray
+        // primaryColor/colorSchemeSeed is mapped to Google Blue
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1A73E8),
+          surface: Colors.white,
         ),
-        textTheme: Theme.of(context).textTheme.apply(
-          bodyColor: Colors.black.withOpacity(.7),
-          displayColor: Colors.black.withOpacity(.7),
+        dividerColor: Colors.black12,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0,
+        ),
+        textTheme: GoogleFonts.robotoTextTheme(Theme.of(context).textTheme).copyWith(
+          titleLarge: GoogleFonts.roboto(
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+          bodyMedium: GoogleFonts.roboto(
+            fontSize: 14,
+            fontWeight: FontWeight.normal,
+            color: Colors.black87,
+          ),
+          labelSmall: GoogleFonts.roboto(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.black54,
+          ),
         ),
         cardTheme: const CardTheme(
-          //set card color for PaginatedDataTable
           surfaceTintColor: Colors.white,
-          elevation: 0,
-        ).data ,
+          color: Colors.white,
+          elevation: 1, // subtle shadow like GCP
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8.0)),
+          ),
+        ).data,
       ),
-      //theme: ThemeData(useMaterial3: true, colorScheme: lightColorScheme),
-      //darkTheme: ThemeData(useMaterial3: true, colorScheme: darkColorScheme),
     );
   }
 }

@@ -92,104 +92,61 @@ def handle_local_archive(archive_path: str, target_dir: str) -> bool:
         return False
 
 
-def download_model_if_needed(model_id: str, local_path: str, custom_archive_path: Optional[str] = None) -> bool:
+def download_gguf_model_if_needed(model_id: str, filename: str, local_path: str) -> str:
     """
-    Ensure a model is available locally, downloading if necessary.
+    Ensure a GGUF model is available locally, downloading if necessary.
     
     This function implements a fallback strategy:
-    1. Check if model directory already exists and has files
-    2. Try to extract from custom archive path (if provided)
-    3. Try to extract from standard archive paths (.tar.gz, .tgz, .tar)
-    4. Download from Hugging Face Hub as last resort
+    1. Check if model is bundled via PyInstaller (sys._MEIPASS)
+    2. Check if the specific filename exists in the target local_path
+    3. Download from Hugging Face Hub as last resort using hf_hub_download
     
     Args:
-        model_id (str): Hugging Face model identifier
+        model_id (str): Hugging Face model repository identifier
+        filename (str): The specific GGUF filename to download
         local_path (str): Target directory for the model files
-        custom_archive_path (Optional[str]): Optional path to a specific archive file
         
     Returns:
-        bool: True if model is available locally, False if all methods failed
+        str: The absolute path to the .gguf file
+        
+    Raises:
+        Exception: If download fails
         
     Example:
-        >>> download_model_if_needed("google/gemma-2-9b-it", "./model/")
-        True
+        >>> path = download_gguf_model_if_needed("bartowski/gemma", "gemma.gguf", "./models")
     """
-    from huggingface_hub import snapshot_download
-
-    print("[download_model_if_needed] download model: {model_id}")
+    import sys
+    from huggingface_hub import hf_hub_download
     
-    # Check if model directory already exists and has files
-    if not os.path.exists(local_path) or not os.listdir(local_path):
-        print(f"[LOADER] Local model not found at {local_path}.")
-        
-        # First, try custom archive path if provided
-        if custom_archive_path and handle_local_archive(custom_archive_path, local_path):
-            return True
-        
-        # Check for compressed tar files before downloading
-        tar_path = get_local_zip_path(model_id)  # This returns .tar.gz path
-
-
-        print(f"[LOADER] No local archive found. Starting download from MyData Tools cache server...")
-        # ex: https://gcs-file-downloader-10805446439.us-central1.run.app/download/google-gemma-3-4b-it
-        
-        # Check for custom model download URL
-        model_download_url = os.environ.get('MODEL_DOWNLOAD_URL')
-        if model_download_url:
-            print(f"[LOADER] Checking custom download URL: {model_download_url}")
-            try:
-                download_url = f"{model_download_url}/download/{model_id.replace('/', '-')}"
-                # Use the .tar.gz path for the download
-                tar_path = get_local_zip_path(model_id)
-                print(f"[LOADER] Downloading from {download_url} to {tar_path}...")
-            
-                urllib.request.urlretrieve(download_url, tar_path)
-            
-                if handle_local_archive(tar_path, local_path):
-                    print(f"[LOADER] Successfully downloaded and extracted model from custom URL.")
-                    return True
-                else:
-                    print(f"[ERROR] Failed to extract downloaded archive from {download_url}")
-            except Exception as e:
-                print(f"[ERROR] Failed to download from custom URL: {e}")
-                # Fall through to standard logic
-
-        if len(tar_path) == 0:
-            # last ditch effort to download model
-            # No archive found or extraction failed, proceed with download
-            if os.environ.get('HF_TOKEN') and os.environ.get('HF_TOKEN') != '':
-                print(f"[LOADER] No local archive found. Starting download from Hugging Face...")
-                try:
-                    snapshot_download(
-                        repo_id=model_id, 
-                        local_dir=local_path, 
-                        local_dir_use_symlinks=False,
-                    )
-                    print("[LOADER] Model download complete.")
-                except Exception as dl_error:
-                    print(f"[ERROR] Error during hugging face model download for {model_id}: {dl_error}")
-                    return False
-        else:
-            # Check out the tar_path and unzip the downloaded model
-
-            alternative_paths = [
-                tar_path,  # .tar.gz from get_local_zip_path
-                tar_path.replace('.tar.gz', '.tgz'),  # .tgz variant
-                tar_path.replace('.tar.gz', '.tar')   # uncompressed .tar
-            ]
-
-            if len(alternative_paths) == 0:
-                raise Exception("Unable to find model to use");
-
-            # Try each archive format
-            for archive_path in alternative_paths:
-                if handle_local_archive(archive_path, local_path):
-                    return True
-
-
+    # 1. Check bundled PyInstaller path first
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        bundled_path = os.path.join(sys._MEIPASS, 'models', filename)
+        print(f"[LOADER] Checking for bundled PyInstaller model at {bundled_path}")
+        if os.path.exists(bundled_path):
+            print(f"[LOADER] Found bundled PyInstaller model at {bundled_path}.")
+            return bundled_path
     else:
-        print(f"[LOADER] Local model found at {local_path}. Skipping download.")
-        return True
+        print("[LOADER] Not running as a PyInstaller bundle. Skipping embedded model check.")
+            
+    # 2. Check intended local path
+    target_file_path = os.path.join(local_path, filename)
+    print(f"[LOADER] Checking for local model fallback at {target_file_path}")
+    if os.path.exists(target_file_path):
+        print(f"[LOADER] Local model found at {target_file_path}. Skipping download.")
+        return target_file_path
         
-    return False
-
+    # 3. Download from HF Hub
+    print(f"[LOADER] Local model not found. Starting download of {filename} from {model_id}...")
+    try:
+        os.makedirs(local_path, exist_ok=True)
+        downloaded_path = hf_hub_download(
+            repo_id=model_id,
+            filename=filename,
+            local_dir=local_path
+        )
+        print(f"[LOADER] Model download complete: {downloaded_path}")
+        return downloaded_path
+    except Exception as dl_error:
+        print(f"[ERROR] Error during model download for {model_id}/{filename}: {dl_error}")
+        raise
+    

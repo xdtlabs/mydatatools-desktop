@@ -6,7 +6,8 @@ validation using Pydantic. These models ensure type safety, automatic
 validation, and generate OpenAPI documentation.
 """
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from .config import DEFAULT_LOCAL_MODEL, DEFAULT_GGUF_FILE
 
 
 class ChatRequest(BaseModel):
@@ -26,14 +27,14 @@ class ChatRequest(BaseModel):
         description="Optional system prompt to guide the model's behavior and response style"
     )
     
-    class Config:
-        """Configuration for the ChatRequest model with example data."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "prompt": "Explain what the difference between a list and a tuple is in Python.",
                 "system_instruction": "You are a concise programming tutor."
             }
         }
+    )
 
 
 class StartSessionRequest(BaseModel):
@@ -44,31 +45,33 @@ class StartSessionRequest(BaseModel):
     Hugging Face Hub or from a local archive file.
     
     Attributes:
-        model_name (str): Hugging Face model identifier or custom name
+        model_name (str): Hugging Face model repository identifier
+        filename (Optional[str]): Specific GGUF file name to load
         local_path (Optional[str]): Path to local model directory or archive file
     """
     model_name: str = Field(
-        default="google/gemma-3-4b-it",
-        description="Hugging Face model identifier (e.g., 'google/gemma-3-4b-it')"
+        default=DEFAULT_LOCAL_MODEL,
+        description="Hugging Face model identifier (e.g., 'bartowski/gemma-3-4b-it-GGUF')"
+    )
+    filename: Optional[str] = Field(
+        default=DEFAULT_GGUF_FILE,
+        description="The GGUF filename to use (e.g., 'gemma-3-4b-it-Q4_K_M.gguf')"
     )
     local_path: Optional[str] = Field(
         None, 
-        description="Optional path to local model directory or tar archive file"
+        description="Optional path to local model file directly"
     )
     
-    class Config:
-        """Configuration for the StartSessionRequest model with example data."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
-                    "model_name": "google/gemma-3-4b-it"
-                },
-                {
-                    "model_name": "kaggle-gemma-4b",
-                    "local_path": "./my-kaggle-models/gemma-4b-kaggle.tar.gz"
+                    "model_name": "bartowski/gemma-3-4b-it-GGUF",
+                    "filename": "gemma-3-4b-it-Q4_K_M.gguf"
                 }
             ]
         }
+    )
 
 
 class EmbeddingRequest(BaseModel):
@@ -88,13 +91,23 @@ class EmbeddingRequest(BaseModel):
     )
     image_base64: Optional[str] = Field(
         None, 
-        description="Base64-encoded image data (PNG, JPEG, etc.)"
+        description="Base64-encoded image data (PNG, JPEG, etc.). NOTE: LlamaCpp does not natively support mmproj image embeddings out of the box with the basic LangChain wrapper without specific builds. Proceed with caution."
+    )
+    model_name: str = Field(
+        default=DEFAULT_LOCAL_MODEL,
+        description="Hugging Face model identifier (e.g., 'bartowski/gemma-3-4b-it-GGUF')"
+    )
+    filename: Optional[str] = Field(
+        default=DEFAULT_GGUF_FILE,
+        description="The GGUF filename to use (e.g., 'gemma-3-4b-it-Q4_K_M.gguf')"
     )
     
-    class Config:
-        """Configuration for the EmbeddingRequest model with example data."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
-                "text": "This is a sample text to generate embeddings for."
+                "text": "This is a sample text to generate embeddings for.",
+                "model_name": "bartowski/gemma-3-4b-it-GGUF",
+                "filename": "gemma-3-4b-it-Q4_K_M.gguf"
             }
         }
+    )

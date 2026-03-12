@@ -6,9 +6,8 @@ the business logic for the API endpoints. Each function corresponds to a
 specific API endpoint and handles request processing, validation, and response generation.
 """
 from typing import Optional, Dict, Any
-from fastapi import HTTPException, File, UploadFile
+from fastapi import HTTPException
 from PIL import Image
-from io import BytesIO
 
 
 from .models import ChatRequest, StartSessionRequest, EmbeddingRequest
@@ -19,7 +18,7 @@ from .model_manager import (
     generate_image_embedding,
     decode_base64_image, load_gemini_model
 )
-from .utils import get_local_path, download_model_if_needed
+from .utils import get_local_path, download_gguf_model_if_needed
 from .state import (
     get_llm_instance, set_llm_instance,
     get_current_model_id, set_current_model_id,
@@ -100,6 +99,7 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
     """
     model_lock, _ = get_locks()
     model_id = request.model_name
+    filename = request.filename
     local_path = get_local_path(model_id)
 
     print(f"[STARTUP] start session with model {model_id}")
@@ -115,28 +115,38 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
             return {"status": "success", "message": f"Session already active with model: {model_id}", "model": model_id}
         
         # 2. Download files if necessary
-        if not download_model_if_needed(model_id, local_path, request.local_path):
-            # Fallback to Hugging Face download if needed
-            # WIll only work with hugging face token set as env variable on users machine
-            print(f"[STARTUP] fallback to hugging face download for model {model_id}")
-            if download_huggingface_model_if_needed(model_id, local_path):
-                print(f"[STARTUP] Default model {model_id} is ready at {local_path}")
-            else:
+        if model_id != "gemini":
+            try:
+                download_gguf_model_if_needed(model_id, filename, local_path)
+            except Exception as e:
+                print(f"[STARTUP] Error downloading model {model_id}/{filename}: {e}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to download model files for {model_id}. Check logs and Hugging Face authentication."
+                    detail=f"Failed to download model files for {model_id}/{filename}. Check logs and Hugging Face authentication."
                 )
         
         # 3. Load the model
         try:
-            # Clear previous model instance before loading new one
-            set_llm_instance(None)
+            import gc
+            
+            # Clear previous model instance before loading new one explicitly
+            old_llm = get_llm_instance()
+            if old_llm is not None:
+                print("[LOADER] Trying to free previous model from memory...")
+                set_llm_instance(None)
+                del old_llm
+                # Force garbage collection to ensure C++ underlying objects are freed
+                gc.collect()
+            
             set_current_model_id(None)
 
             if model_id == "gemini":
-                new_llm = load_gemini_model()
+                if request.system_instruction:
+                    new_llm = load_gemini_model(system_instruction=request.system_instruction)
+                else:
+                    new_llm = load_gemini_model()
             else:
-                new_llm = load_local_model(local_path)
+                new_llm = load_local_model(model_name=model_id, filename=filename, local_dir=local_path)
             
             set_llm_instance(new_llm)
             set_current_model_id(model_id)
@@ -209,17 +219,9 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         
         full_prompt += f"{request.prompt}<end_of_turn>\n\n<start_of_turn>model\n"
 
-        # The HuggingFacePipeline wrapper takes a single string input
+        # The LangChain LlamaCpp wrapper takes a single string input
         response_text = llm_instance.invoke(full_prompt)
-        
-        # The model output includes the input prompt, so we strip it out.
-        if full_prompt in response_text:
-            ai_response = response_text.split(full_prompt, 1)[-1].strip()
-        else:
-            ai_response = response_text.strip()
-        
-        # Strip potential remaining tags if the generation stops abruptly
-        ai_response = ai_response.replace("<end_of_turn>", "").strip()
+        ai_response = response_text.strip()
 
         return {
             "user_prompt": request.prompt,
@@ -290,10 +292,13 @@ async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
         embedding_model, embedding_processor = get_embedding_model()
         if embedding_model is None or embedding_processor is None:
             try:
-                print("[EMBEDDING] Loading Gemma-3-4B model for embeddings...")
-                model, processor = load_embedding_model("google/gemma-3-4b-it")
+                model_id = request.model_name
+                filename = request.filename
+                print(f"[EMBEDDING] Loading {model_id}/{filename} for embeddings...")
+                local_path = get_local_path(model_id)
+                model, processor = load_embedding_model(model_id, filename, local_path)
                 set_embedding_model(model, processor)
-                set_embedding_model_id("google/gemma-3-4b-it")
+                set_embedding_model_id(model_id)
             except Exception as e:
                 print(f"[ERROR] Failed to load embedding model: {e}")
                 raise HTTPException(
@@ -311,11 +316,8 @@ async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
             input_content = request.text
         else:
             # Generate image embedding
-            image = decode_base64_image(request.image_base64)
-            embedding = generate_image_embedding(image, embedding_model, embedding_processor)
-            input_type = "image"
-            input_content = f"Image ({image.size[0]}x{image.size[1]})"
-        
+            raise HTTPException(status_code=400, detail="Image embedding is not natively supported by LlamaCpp without experimental mmproj builds. Please use text embeddings or configure a multimodal huggingface model.")
+            
         return {
             "embedding": embedding,
             "input_type": input_type,
@@ -324,6 +326,8 @@ async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
             "embedding_dimension": len(embedding)
         }
     
+    except HTTPException:
+        raise
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -333,110 +337,3 @@ async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
             detail=f"Failed to generate embedding: {e}"
         )
 
-
-async def generate_embedding_from_upload(
-    image_file: UploadFile = File(...),
-    text: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Generate embeddings from uploaded image files with optional text combination.
-    
-    Accepts image files via multipart form upload and generates embeddings using
-    the multimodal Gemma model. Supports both image-only embeddings and combined
-    text+image embeddings for multimodal applications.
-    
-    Supported image formats:
-    - PNG, JPEG, GIF, BMP, TIFF
-    - Automatic conversion to RGB format
-    - File size and type validation
-    
-    Args:
-        image_file (UploadFile): Uploaded image file from multipart form
-        text (Optional[str]): Optional text to combine with image for multimodal embedding
-        
-    Returns:
-        Dict[str, Any]: Response with embedding vector, metadata, and file information
-        
-    Raises:
-        HTTPException: If file is not an image (400) or processing fails (500)
-        
-    Example:
-        >>> # Image-only embedding (via form upload)
-        >>> with open("photo.jpg", "rb") as f:
-        ...     files = {"image_file": ("photo.jpg", f, "image/jpeg")}
-        ...     response = requests.post("/embedding/upload", files=files)
-        
-        >>> # Combined text+image embedding
-        >>> with open("photo.jpg", "rb") as f:
-        ...     files = {"image_file": ("photo.jpg", f, "image/jpeg")}
-        ...     data = {"text": "A beautiful sunset over the ocean"}
-        ...     response = requests.post("/embedding/upload", files=files, data=data)
-    """
-    _, embedding_lock = get_locks()
-    
-    # Validate file type
-    if not image_file.content_type or not image_file.content_type.startswith('image/'):
-        raise HTTPException(
-            status_code=400,
-            detail="File must be an image (PNG, JPEG, etc.)"
-        )
-    
-    # Load embedding model if not already loaded
-    async with embedding_lock:
-        embedding_model, embedding_processor = get_embedding_model()
-        if embedding_model is None or embedding_processor is None:
-            try:
-                print("[EMBEDDING] Loading Gemma-3-4B model for embeddings...")
-                model, processor = load_embedding_model("google/gemma-3-4b-it")
-                set_embedding_model(model, processor)
-                set_embedding_model_id("google/gemma-3-4b-it")
-            except Exception as e:
-                print(f"[ERROR] Failed to load embedding model: {e}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to load embedding model: {e}"
-                )
-    
-    try:
-        embedding_model, embedding_processor = get_embedding_model()
-        
-        # Read and process the uploaded image
-        image_data = await image_file.read()
-        image = Image.open(BytesIO(image_data)).convert('RGB')
-        
-        if text:
-            # Generate combined text+image embedding using processor
-            import torch
-            inputs = embedding_processor(text=text, images=image, return_tensors="pt")
-            device = next(embedding_model.parameters()).device
-            inputs = {k: v.to(device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = embedding_model(**inputs, output_hidden_states=True)
-                last_hidden_state = outputs.hidden_states[-1]
-                embedding = torch.mean(last_hidden_state, dim=1)
-            
-            embedding = embedding.squeeze().cpu().numpy().tolist()
-            input_type = "text+image"
-            input_content = f"Text: '{text}' + Image ({image.size[0]}x{image.size[1]})"
-        else:
-            # Generate image-only embedding
-            embedding = generate_image_embedding(image, embedding_model, embedding_processor)
-            input_type = "image"
-            input_content = f"Image ({image.size[0]}x{image.size[1]})"
-        
-        return {
-            "embedding": embedding,
-            "input_type": input_type,
-            "input_content": input_content,
-            "model_used": get_embedding_model_id(),
-            "embedding_dimension": len(embedding),
-            "filename": image_file.filename
-        }
-    
-    except Exception as e:
-        print(f"[ERROR] Failed to generate embedding from upload: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate embedding: {e}"
-        )

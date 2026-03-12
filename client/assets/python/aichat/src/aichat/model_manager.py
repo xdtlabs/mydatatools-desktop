@@ -13,19 +13,12 @@ import base64
 from io import BytesIO
 
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.llms import LlamaCpp
 
-# --- FIX: Conditionally Import HuggingFacePipeline ---
-try:
-    from langchain_huggingface import HuggingFacePipeline
-    print("Using langchain_huggingface.HuggingFacePipeline (Recommended).")
-except ImportError:
-    from langchain_community.llms import HuggingFacePipeline
-    print("WARNING: Falling back to langchain_community.llms.HuggingFacePipeline. Please install 'langchain-huggingface' to eliminate all deprecation warnings.")
+from transformers import AutoModelForCausalLM, AutoProcessor
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor, pipeline
-
-from .config import MODEL_DTYPE, MAX_NEW_TOKENS, TEMPERATURE, DO_SAMPLE
-from .utils import get_local_path, download_model_if_needed
+from .config import MAX_NEW_TOKENS, TEMPERATURE, DO_SAMPLE
+from .utils import get_local_path, download_gguf_model_if_needed
 
 
 def load_gemini_model() -> ChatGoogleGenerativeAI:
@@ -36,15 +29,15 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     Google Gemini service. It requires the GOOGLE_API_KEY environment
     variable to be set.
 
-    Args:
-        local_path (str): This argument is no longer used but kept for
-                          interface compatibility.
-
     Returns:
         ChatGoogleGenerativeAI: An instance of the LangChain Google AI chat model.
 
     Raises:
         ValueError: If the GOOGLE_API_KEY environment variable is not set.
+        
+    Example:
+        >>> gemini_llm = load_gemini_model()
+        >>> response = gemini_llm.invoke("Hello, Gemini!")
     """
     print("[LOADER] Initializing Google Gemini client.")
 
@@ -55,7 +48,7 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     # Initialize the ChatGoogleGenerativeAI client
     # You can specify other parameters like temperature, top_p, etc.
     llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro-latest",
+        model="gemini-3.1-pro-preview",
         google_api_key=api_key,
         temperature=TEMPERATURE,
         # convert_system_message_to_human=True # Use if needed for older models
@@ -64,135 +57,121 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     return llm
 
 
-def load_local_model(local_path: str) -> HuggingFacePipeline:
+def load_local_model(model_name: str, filename: str, local_dir: str) -> LlamaCpp:
     """
-    Load a language model from disk into a LangChain HuggingFacePipeline object.
+    Load a language model from disk into a LangChain LlamaCpp object.
     
-    This function loads a pre-trained language model from a local directory,
-    creates a HuggingFace text generation pipeline, and wraps it in a
-    LangChain HuggingFacePipeline for consistent interface.
+    This function ensures the required GGUF file is available locally,
+    then initializes the llama-cpp-python binding wrapped in LangChain.
     
     Args:
-        local_path (str): Path to the directory containing model files
+        model_name (str): HF repo ID or custom name
+        filename (str): The specific GGUF file name
+        local_dir (str): Path to the directory for storing/checking model files
         
     Returns:
-        HuggingFacePipeline: Wrapped pipeline ready for text generation
+        LlamaCpp: Wrapped pipeline ready for text generation
         
     Raises:
-        Exception: If model loading fails due to missing files, memory issues, etc.
-        
+        Exception: If model loading fails due to missing files or corrupted architecture.
+
     Example:
-        >>> pipeline = load_local_model("./google-gemma-3-4b-it-local/")
-        >>> response = pipeline.invoke("Hello, world!")
+        >>> llm = load_local_model("bartowski/gemma", "gemma-3-4b.gguf", "./models")
+        >>> response = llm.invoke("Hi!")
     """
-    print(f"[LOADER] Attempting to load model from: {local_path}. This may take time.")
+    print(f"[LOADER] Attempting to load GGUF model: {model_name}/{filename}")
     
-    # 1. Load Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(local_path)
-
-    # 2. Load Model 
-    # Using modern 'dtype' instead of deprecated 'torch_dtype'
-    model = AutoModelForCausalLM.from_pretrained(
-        local_path,
-        dtype=getattr(torch, MODEL_DTYPE), 
-        device_map="auto"
-    )
-
-    # 3. Create a HuggingFace Text Generation Pipeline
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        max_new_tokens=MAX_NEW_TOKENS,
-        do_sample=DO_SAMPLE,
+    # 1. Download or locate the GGUF file
+    model_path = download_gguf_model_if_needed(model_name, filename, local_dir)
+    
+    # 2. Initialize LlamaCpp
+    print(f"[LOADER] Initializing LlamaCpp from {model_path}...")
+    llm = LlamaCpp(
+        model_path=model_path,
         temperature=TEMPERATURE,
-        # Using modern 'dtype' in model_kwargs
-        model_kwargs={"dtype": getattr(torch, MODEL_DTYPE)}, 
+        max_tokens=MAX_NEW_TOKENS,
+        n_ctx=4096,
+        n_gpu_layers=-1, # Offload all layers to GPU (Metal on Mac)
+        verbose=False,   # Disabled to clean up flutter logs
     )
-
-    # 4. Wrap in LangChain HuggingFacePipeline
-    return HuggingFacePipeline(pipeline=pipe)
-
-
-def load_embedding_model(model_id: str = "google/gemma-3-4b-it") -> Tuple[Any, Any]:
-    """
-    Load a model specifically configured for embedding generation.
     
-    Downloads (if needed) and loads a multimodal model that can generate
-    embeddings for both text and images. Uses the same base model architecture
-    but configured for embedding extraction rather than text generation.
+    return llm
+
+
+def load_embedding_model(model_id: str, filename: str, local_dir: str) -> LlamaCpp:
+    """
+    Load a model specifically configured for embedding generation using LlamaCpp.
+    
+    Downloads (if needed) and loads a GGUF model that can generate text embeddings.
     
     Args:
-        model_id (str): HuggingFace model identifier. Defaults to "google/gemma-3-4b-it"
+        model_id (str): HuggingFace model identifier.
+        filename (str): The specific GGUF file name
+        local_dir (str): Path to the directory for storing/checking model files
         
     Returns:
-        Tuple[Any, Any]: A tuple of (model, processor) ready for embedding generation
+        tuple[LlamaCpp, None]: LlamaCpp object initialized with embedding capabilities and a None placeholder for processor.
         
     Raises:
-        Exception: If model download or loading fails
-        
+        Exception: If model download or loading fails.
+
     Example:
-        >>> model, processor = load_embedding_model("google/gemma-3-4b-it")
-        >>> embeddings = generate_text_embedding("Hello", model, processor)
+        >>> embed_model, _ = load_embedding_model("bartowski/gemma", "gemma-embedding.gguf", "./models")
     """
-    local_path = get_local_path(model_id)
+    print(f"[EMBEDDING] Attempting to load embedding model: {model_id}/{filename}")
     
-    print(f"[EMBEDDING] Attempting to load embedding model from: {local_path}")
+    model_path = download_gguf_model_if_needed(model_id, filename, local_dir)
     
-    # Download model if needed
-    if not download_model_if_needed(model_id, local_path):
-        raise Exception(f"Failed to download embedding model {model_id}")
-    
-    # Load processor and model for multimodal capabilities
-    processor = AutoProcessor.from_pretrained(local_path)
-    model = AutoModelForCausalLM.from_pretrained(
-        local_path,
-        dtype=getattr(torch, MODEL_DTYPE),
-        device_map="auto"
+    print(f"[EMBEDDING] Initializing LlamaCpp for embeddings from {model_path}...")
+    llm = LlamaCpp(
+        model_path=model_path,
+        embedding=True,  # Crucial flag for embedding generation
+        n_ctx=4096,
+        n_gpu_layers=-1,
+        verbose=False,
     )
     
     print(f"[EMBEDDING] Embedding model {model_id} loaded successfully.")
-    return model, processor
+    return llm, None  # Returning None for processor as LlamaCpp doesn't use one in the same way
 
 
 def generate_text_embedding(text: str, model: Any, processor: Any) -> List[float]:
     """
     Generate embeddings for text input using a loaded model.
     
-    Processes text through the model to extract high-dimensional vector
-    representations. Uses the model's last hidden layer and applies
-    average pooling across the sequence dimension.
+    Processes text through the LlamaCpp model to extract high-dimensional vector
+    representations.
     
     Args:
         text (str): Input text to generate embeddings for
-        model (Any): Loaded language model with embedding capabilities
-        processor (Any): Model processor for handling inputs
+        model (Any): Loaded language model with embedding capabilities (LlamaCpp)
+        processor (Any): Not used for LlamaCpp
         
     Returns:
-        List[float]: A list of float values representing the text embedding
+        List[float]: A list of float values representing the text embedding.
         
+    Raises:
+        ValueError: If the provided model instance lacks embedding capabilities.
+
     Example:
-        >>> embedding = generate_text_embedding(
-        ...     "Hello world", model, processor
-        ... )
-        >>> print(f"Embedding dimension: {len(embedding)}")
+        >>> embed_model, processor = load_embedding_model("repo", "filename", "./models")
+        >>> vector = generate_text_embedding("Some text", embed_model, processor)
+        >>> print(len(vector))
     """
-    # Prepare text input
-    inputs = processor(text=text, return_tensors="pt")
-    
-    # Move inputs to same device as model
-    device = next(model.parameters()).device
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    
-    with torch.no_grad():
-        # Get hidden states from the model
-        outputs = model(**inputs, output_hidden_states=True)
-        # Use the last hidden state and average pool across sequence length
-        last_hidden_state = outputs.hidden_states[-1]  # [batch_size, seq_len, hidden_dim]
-        # Average pooling across the sequence dimension
-        embeddings = torch.mean(last_hidden_state, dim=1)  # [batch_size, hidden_dim]
-        
-    return embeddings.squeeze().cpu().numpy().tolist()
+    from langchain_community.embeddings import LlamaCppEmbeddings
+    # If using LlamaCpp directly (from LangChain's LLM), we can use the underlying client
+    if hasattr(model, 'client') and hasattr(model.client, 'embed'):
+        result = model.client.embed(text)
+        # Handle different return formats from llama-cpp-python versions
+        if isinstance(result, list) and len(result) > 0:
+            if isinstance(result[0], list):
+                return result[0]
+            elif hasattr(result[0], 'embedding'): # Check for Embedding output object
+                return result[0].embedding
+        return result
+    else:
+        # Fallback if the underlying method isn't available easily
+        raise ValueError("Provided model does not support LlamaCpp embedding generation correctly")
 
 
 def generate_image_embedding(image: Image.Image, model: Any, processor: Any) -> List[float]:
