@@ -29,19 +29,19 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        cache: 'pip'
 
-    - name: Install Dependencies
+    - name: Install PDM
+      uses: pdm-project/setup-pdm@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Python Dependencies
       working-directory: client/assets/python/aichat
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
+      run: pdm install --dev
 
     - name: Build with PyInstaller
       working-directory: client/assets/python/aichat
-      run: |
-        pyinstaller main.spec
+      run: pdm run pyinstaller -y main.spec
 
     - name: Upload Artifact (macOS)
       if: matrix.os == 'macos-latest'
