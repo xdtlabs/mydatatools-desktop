@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter/foundation.dart';
+import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/main.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -22,6 +23,8 @@ class PythonManager {
 
   String? _pythonDir;
   static ValueNotifier<bool> isLLMServiceRunning = ValueNotifier(false);
+
+  final AppLogger logger = AppLogger(null);
 
   PythonManager._();
 
@@ -41,31 +44,32 @@ class PythonManager {
     Completer<void> completer = Completer<void>();
 
     // Ensure bundled aichat assets are available in Application Support before proceeding.
+    logger.d('[python] Ensuring aichat assets are available');
     await ensureAichatUnzipped().then((_) => completer.complete());
 
     final supportDir = await getApplicationSupportDirectory();
-    _pythonDir = p.join(supportDir.path, "aichat/aichat");
+    _pythonDir = p.join(supportDir.path, "aichat");
 
     // Check for existing PID file and kill previous process if it exists
     final pidFile = File(p.join(_pythonDir!, 'aichat.pid'));
     if (pidFile.existsSync()) {
       try {
         final oldPid = int.parse(pidFile.readAsStringSync().trim());
-        debugPrint('[python] Found existing PID file with PID: $oldPid');
+        logger.d('[python] Found existing PID file with PID: $oldPid');
         if (Process.killPid(oldPid, ProcessSignal.sigkill)) {
-          debugPrint('[python] Successfully killed old process $oldPid');
+          logger.d('[python] Successfully killed old process $oldPid');
         } else {
-          debugPrint(
+          logger.d(
             '[python] Failed to kill old process $oldPid (might not be running)',
           );
         }
       } catch (e) {
-        debugPrint('[python] Error handling existing PID file: $e');
+        logger.d('[python] Error handling existing PID file: $e');
       }
     }
 
-    debugPrint('[python] Starting AI Chat service in `$_pythonDir`');
-    debugPrint('[python] Starting AI Chat service in `$_pythonDir`');
+    logger.d('[python] Starting AI Chat service in `$_pythonDir`');
+    logger.d('[python] Starting AI Chat service in `$_pythonDir`');
 
     String executableName = 'aichat';
     if (Platform.isWindows) {
@@ -73,24 +77,31 @@ class PythonManager {
     }
 
     final executablePath = p.join(_pythonDir!, executableName);
+    logger.d('[python] Executable path: $executablePath');
+
+    String command = executablePath;
+    List<String> commandArgs = [];
 
     if (!File(executablePath).existsSync()) {
-      _stderrController.add('Python executable not found at $executablePath');
+      final msg = 'Python executable not found at $executablePath';
+      _stderrController.add(msg);
+      logger.e('[python] $msg');
       return;
     }
 
-    // Ensure executable permission on Unix-like systems
-    if (!Platform.isWindows) {
+    // Ensure executable permission on Unix-like systems if using compiled binary
+    if (!Platform.isWindows && command == executablePath) {
       await Process.run('chmod', ['+x', executablePath]);
     }
 
     try {
-      print("Starting AI Chat service...");
+      logger.d("Starting AI Chat service...");
       _pythonProc = await Process.start(
-        executablePath,
-        [],
+        command,
+        commandArgs,
         workingDirectory: _pythonDir,
         environment: {
+          'PYTHONUNBUFFERED': '1',
           'HF_TOKEN': '', //todo pass from client
           'GOOGLE_API_KEY': '', //todo pass from client
           'MODEL_DOWNLOAD_URL':
@@ -101,14 +112,14 @@ class PythonManager {
       // Write new PID to file
       try {
         pidFile.writeAsStringSync('${_pythonProc!.pid}');
-        debugPrint('[python] Wrote PID ${_pythonProc!.pid} to ${pidFile.path}');
+        logger.d('[python] Wrote PID ${_pythonProc!.pid} to ${pidFile.path}');
       } catch (e) {
-        debugPrint('[python] Failed to write PID file: $e');
+        logger.d('[python] Failed to write PID file: $e');
       }
 
       await _pipeOutput(_pythonProc!);
 
-      `//Start default session
+      //Start default session
       MainApp.llmServiceUrl.listen((llmServiceUrl) async {
         if (llmServiceUrl != null) {
           final session = await http.post(
@@ -117,27 +128,38 @@ class PythonManager {
               'Content-Type': 'application/json; charset=UTF-8',
             },
             body: jsonEncode(<String, dynamic>{
-              "model_name": "google/gemma-3-4b-it",
+              "model_name": "bartowski/gemma-3-4b-it-GGUF",
+              "filename": "gemma-3-4b-it-Q4_K_M.gguf",
             }),
           );
-          debugPrint(
+          logger.d(
             'Started default session: ${session.statusCode} ${session.body}',
           );
         }
       });
 
       stdoutLines.listen((line) {
-        debugPrint('[python] $line');
+        logger.i('[python] $line');
+        print('[python] $line'); // Ensure standard Flutter debug console output
+        // If it's a downloading/loading message, blast it to the UI status bar!
+        if (line.contains('[LOADER]')) {
+          logger.s(line.replaceAll('[LOADER]', '').trim());
+        }
       });
 
       final urlRegex = RegExp(r'(http?:\/\/[^\s]+)');
       stderrLines.listen((line) {
-        debugPrint('[python] $line');
+        logger.i('[python] $line');
+        print('[python] $line');
+        if (line.contains('[LOADER]')) {
+          logger.s(line.replaceAll('[LOADER]', '').trim());
+        }
         final match = urlRegex.firstMatch(line);
         if (match != null) {
           final url = match.group(1);
           if (url != null) {
-            debugPrint('[python] AI Chat service is running at: $url');
+            logger.i('[python] AI Chat service is running at: $url');
+            print('[python] AI Chat service is running at: $url');
             // Store this URL in a variable for later use.
             MainApp.llmServiceUrl.add(url);
             isLLMServiceRunning.value = true;
@@ -148,7 +170,9 @@ class PythonManager {
         }
       });
     } catch (e) {
-      _stderrController.add('Failed to start AI Chat service: $e');
+      final msg = 'Failed to start AI Chat service: $e';
+      _stderrController.add(msg);
+      logger.e('[python] $msg');
       completer.completeError(e);
     }
 
@@ -184,10 +208,10 @@ class PythonManager {
         final pidFile = File(p.join(_pythonDir!, 'aichat.pid'));
         if (pidFile.existsSync()) {
           pidFile.deleteSync();
-          debugPrint('[python] Deleted PID file');
+          logger.d('[python] Deleted PID file');
         }
       } catch (e) {
-        debugPrint('[python] Error deleting PID file: $e');
+        logger.d('[python] Error deleting PID file: $e');
       }
     }
 
@@ -247,6 +271,8 @@ class PythonManager {
             ),
           ].map((s) => p.normalize(s)).toList();
 
+      //logger.d('[python] Candidates: ${candidates.join(', ')}');
+      
       String? zipPath;
       for (final c in candidates) {
         if (File(c).existsSync()) {
@@ -256,9 +282,9 @@ class PythonManager {
       }
 
       if (zipPath == null) {
-        _stderrController.add(
-          'aichat zip not found. Searched: ${candidates.join(', ')}',
-        );
+        final msg = 'aichat zip not found. Searched: ${candidates.join(', ')}';
+        _stderrController.add(msg);
+        logger.e('[python] $msg');
         return;
       }
 
@@ -296,7 +322,9 @@ class PythonManager {
         }
       }
     } catch (e) {
-      _stderrController.add('Exception while unzipping aichat bundle: $e');
+      final msg = 'Exception while unzipping aichat bundle: $e';
+      _stderrController.add(msg);
+      logger.e('[python] $msg');
     }
   }
 

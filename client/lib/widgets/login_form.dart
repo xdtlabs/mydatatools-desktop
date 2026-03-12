@@ -55,14 +55,22 @@ class _LoginFormState extends State<LoginForm> {
                 false)) {
           String pwd =
               await secureStorage?.read(key: AppConstants.securePassword) ?? '';
-          setState(() {
-            savedPassword = pwd;
-          });
+          if (mounted) {
+            setState(() {
+              savedPassword = pwd;
+            });
+          }
         } else {
           logger.i("saved password not found or remember me is false");
         }
       }
     }).call();
+  }
+
+  @override
+  void dispose() {
+    ServicesBinding.instance.keyboard.removeHandler(onKey);
+    super.dispose();
   }
 
   @override

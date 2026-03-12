@@ -16,13 +16,11 @@ Usage:
     uvicorn main:app --reload --port 8000   # Run with uvicorn (recommended)
 """
 import os
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI
 from typing import Optional
 
 from .config import DEFAULT_LOCAL_MODEL, API_TITLE, API_DESCRIPTION
 from .models import ChatRequest, StartSessionRequest, EmbeddingRequest
-from .utils import get_local_path, download_model_if_needed
 from . import routes
 
 
@@ -40,7 +38,6 @@ app.get("/", summary="Health Check")(routes.health_check)
 app.post("/start-session", summary="Dynamically load a Hugging Face model for chat")(routes.start_session)
 app.post("/chat", summary="Generate a chat response using the currently loaded model")(routes.generate_chat_response)
 app.post("/embedding", summary="Generate embeddings for text or image using Gemma-3-4B")(routes.generate_embedding)
-app.post("/embedding/upload", summary="Generate embeddings for uploaded image file")(routes.generate_embedding_from_upload)
 
 
 def main() -> None:
@@ -74,5 +71,13 @@ def main() -> None:
 
 if __name__ == "__main__":
     import multiprocessing
+    
+    # Set the multiprocessing start method to "spawn" to prevent fork bombs on macOS
+    # when loading large models with Transformers
+    try:
+        multiprocessing.set_start_method('spawn')
+    except RuntimeError:
+        pass # The start method has already been set
+        
     multiprocessing.freeze_support()
     main()

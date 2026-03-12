@@ -7,10 +7,10 @@ modify application behavior.
 """
 
 # Default model configuration
-DEFAULT_LOCAL_MODEL = "google/gemma-3-4b-it"  # Default model to load at startup
+DEFAULT_LOCAL_MODEL = "bartowski/gemma-3-4b-it-GGUF"  # Default model repository to load at startup
+DEFAULT_GGUF_FILE = "gemma-3-4b-it-Q4_K_M.gguf"       # Default GGUF file to utilize
 
 # Model loading configuration
-MODEL_DTYPE = "bfloat16"    # Data type for model weights (memory efficient)
 MAX_NEW_TOKENS = 512        # Maximum tokens to generate in response
 TEMPERATURE = 0.7           # Sampling temperature for text generation
 DO_SAMPLE = True           # Whether to use sampling vs greedy decoding
@@ -19,5 +19,5 @@ DO_SAMPLE = True           # Whether to use sampling vs greedy decoding
 MODELS_BASE_DIR = "./models"  # Base directory for storing model files
 
 # FastAPI configuration
-API_TITLE = "Gemma 2 Local Chat Endpoint with Dynamic Model Loading"
-API_DESCRIPTION = "API to dynamically download, load, and chat with local Hugging Face models."
+API_TITLE = "Gemma 2 Local Chat Endpoint with GGUF Dynamic Loading"
+API_DESCRIPTION = "API to dynamically download, load, and chat with local GGUF format Hugging Face models."

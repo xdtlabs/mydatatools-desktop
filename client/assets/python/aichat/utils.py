@@ -161,7 +161,6 @@ def download_model_if_needed(model_id: str, local_path: str, custom_archive_path
                     snapshot_download(
                         repo_id=model_id, 
                         local_dir=local_path, 
-                        local_dir_use_symlinks=False,
                     )
                     print("[LOADER] Model download complete.")
                 except Exception as dl_error:
