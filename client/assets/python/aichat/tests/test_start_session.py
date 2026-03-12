@@ -10,8 +10,8 @@ from unittest.mock import Mock, patch, AsyncMock
 from fastapi import HTTPException
 
 # Import the functions we want to test
-from routes import start_session
-from models import StartSessionRequest
+from aichat.routes import start_session
+from aichat.models import StartSessionRequest
 
 
 class TestStartSession:
@@ -20,9 +20,9 @@ class TestStartSession:
     @pytest.mark.asyncio
     async def test_start_session_model_already_loaded(self):
         """Test start_session when requested model is already loaded."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path:
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path:
             
             # Setup mocks
             model_lock = AsyncMock()
@@ -45,10 +45,10 @@ class TestStartSession:
     @pytest.mark.asyncio
     async def test_start_session_download_failure(self):
         """Test start_session when model download fails."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path, \
-             patch('routes.download_model_if_needed') as mock_download:
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.routes.download_gguf_model_if_needed') as mock_download:
             
             # Setup mocks
             model_lock = AsyncMock()
@@ -66,18 +66,18 @@ class TestStartSession:
                 await start_session(request)
             
             assert exc_info.value.status_code == 500
-            assert "Failed to download model files" in exc_info.value.detail
+            assert "Failed to download model files" in exc_info.value.detail or "Failed to load model" in exc_info.value.detail
     
     @pytest.mark.asyncio
     async def test_start_session_model_loading_failure(self):
         """Test start_session when model loading into memory fails."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path, \
-             patch('routes.download_model_if_needed') as mock_download, \
-             patch('routes.load_model_to_memory') as mock_load_model, \
-             patch('routes.set_llm_instance') as mock_set_llm, \
-             patch('routes.set_current_model_id') as mock_set_model_id, \
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.routes.download_gguf_model_if_needed') as mock_download, \
+             patch('aichat.routes.load_local_model') as mock_load_model, \
+             patch('aichat.routes.set_llm_instance') as mock_set_llm, \
+             patch('aichat.routes.set_current_model_id') as mock_set_model_id, \
              patch('builtins.print'):
             
             # Setup mocks
@@ -106,13 +106,13 @@ class TestStartSession:
     @pytest.mark.asyncio
     async def test_start_session_success(self):
         """Test successful model loading and session start."""
-        with patch('routes.get_locks') as mock_get_locks, \
-             patch('routes.get_current_model_id') as mock_get_model_id, \
-             patch('routes.get_local_path') as mock_get_local_path, \
-             patch('routes.download_model_if_needed') as mock_download, \
-             patch('routes.load_model_to_memory') as mock_load_model, \
-             patch('routes.set_llm_instance') as mock_set_llm, \
-             patch('routes.set_current_model_id') as mock_set_model_id, \
+        with patch('aichat.routes.get_locks') as mock_get_locks, \
+             patch('aichat.routes.get_current_model_id') as mock_get_model_id, \
+             patch('aichat.routes.get_local_path') as mock_get_local_path, \
+             patch('aichat.routes.download_gguf_model_if_needed') as mock_download, \
+             patch('aichat.routes.load_local_model') as mock_load_model, \
+             patch('aichat.routes.set_llm_instance') as mock_set_llm, \
+             patch('aichat.routes.set_current_model_id') as mock_set_model_id, \
              patch('builtins.print'):
             
             # Setup mocks

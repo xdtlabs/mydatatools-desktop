@@ -128,8 +128,17 @@ async def start_session(request: StartSessionRequest) -> Dict[str, Any]:
         
         # 3. Load the model
         try:
-            # Clear previous model instance before loading new one
-            set_llm_instance(None)
+            import gc
+            
+            # Clear previous model instance before loading new one explicitly
+            old_llm = get_llm_instance()
+            if old_llm is not None:
+                print("[LOADER] Trying to free previous model from memory...")
+                set_llm_instance(None)
+                del old_llm
+                # Force garbage collection to ensure C++ underlying objects are freed
+                gc.collect()
+            
             set_current_model_id(None)
 
             if model_id == "gemini":

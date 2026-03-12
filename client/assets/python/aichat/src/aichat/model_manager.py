@@ -17,7 +17,7 @@ from langchain_community.llms import LlamaCpp
 
 from transformers import AutoModelForCausalLM, AutoProcessor
 
-from .config import MODEL_DTYPE, MAX_NEW_TOKENS, TEMPERATURE, DO_SAMPLE
+from .config import MAX_NEW_TOKENS, TEMPERATURE, DO_SAMPLE
 from .utils import get_local_path, download_gguf_model_if_needed
 
 

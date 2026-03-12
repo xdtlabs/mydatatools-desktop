@@ -21,6 +21,7 @@ dependencies = [
     "huggingface-hub==0.36.0",
     "torch==2.8.0",
     "langchain-google-genai",
+    "langchain-community",
 ]
 requires-python = ">=3.11,<3.14"
 readme = "README.md"
