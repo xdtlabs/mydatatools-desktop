@@ -187,6 +187,9 @@ def download_gguf_model_if_needed(model_id: str, filename: str, local_path: str)
         
     Raises:
         Exception: If download fails
+        
+    Example:
+        >>> path = download_gguf_model_if_needed("bartowski/gemma", "gemma.gguf", "./models")
     """
     import sys
     from huggingface_hub import hf_hub_download
@@ -219,49 +222,4 @@ def download_gguf_model_if_needed(model_id: str, filename: str, local_path: str)
     except Exception as dl_error:
         print(f"[ERROR] Error during model download for {model_id}/{filename}: {dl_error}")
         raise
-    
-
-def download_huggingface_model_if_needed(model_id: str, local_path: str) -> bool:
-    """
-    Ensure a Hugging Face model repository is available locally, downloading if necessary.
-    
-    Args:
-        model_id (str): Hugging Face model repository identifier
-        local_path (str): Target directory for the model files
-        
-    Returns:
-        bool: True if model is available locally, False otherwise
-    """
-    import sys
-    import os
-    from huggingface_hub import snapshot_download
-    
-    # 1. Check bundled PyInstaller path first
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        safe_model_name = model_id.replace("/", "-")
-        bundled_path = os.path.join(sys._MEIPASS, 'models', safe_model_name)
-        if os.path.exists(bundled_path) and os.path.isdir(bundled_path):
-            print(f"[LOADER] Found bundled PyInstaller model at {bundled_path}.")
-            # Assuming caller just needs it at local_path. If we really wanted to use bundled_path we'd need to copy it or change logic.
-            # But let's just proceed to checking local_path.
-
-    # 2. Check intended local path
-    if os.path.exists(local_path) and os.path.exists(os.path.join(local_path, "config.json")):
-        print(f"[LOADER] Local model found at {local_path}. Skipping download.")
-        return True
-        
-    # 3. Download from HF Hub
-    print(f"[LOADER] Local model not found. Starting download of {model_id}...")
-    try:
-        os.makedirs(local_path, exist_ok=True)
-        snapshot_download(
-            repo_id=model_id,
-            local_dir=local_path,
-            local_dir_use_symlinks=False
-        )
-        print(f"[LOADER] Model download complete: {local_path}")
-        return True
-    except Exception as dl_error:
-        print(f"[ERROR] Error during model download for {model_id}: {dl_error}")
-        return False
     

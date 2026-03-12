@@ -32,6 +32,7 @@ def get_llm_instance() -> Optional[LlamaCpp | ChatGoogleGenerativeAI]:
     Returns:
         Optional[LlamaCpp | ChatGoogleGenerativeAI]: The current LLM instance, or None if no model is loaded
         
+    Example:
         >>> response = llm.invoke("Hello, world!")
     """
     return llm_instance

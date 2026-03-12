@@ -6,7 +6,7 @@ validation using Pydantic. These models ensure type safety, automatic
 validation, and generate OpenAPI documentation.
 """
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from .config import DEFAULT_LOCAL_MODEL, DEFAULT_GGUF_FILE
 
 
@@ -27,14 +27,14 @@ class ChatRequest(BaseModel):
         description="Optional system prompt to guide the model's behavior and response style"
     )
     
-    class Config:
-        """Configuration for the ChatRequest model with example data."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "prompt": "Explain what the difference between a list and a tuple is in Python.",
                 "system_instruction": "You are a concise programming tutor."
             }
         }
+    )
 
 
 class StartSessionRequest(BaseModel):
@@ -62,9 +62,8 @@ class StartSessionRequest(BaseModel):
         description="Optional path to local model file directly"
     )
     
-    class Config:
-        """Configuration for the StartSessionRequest model with example data."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
                     "model_name": "bartowski/gemma-3-4b-it-GGUF",
@@ -72,6 +71,7 @@ class StartSessionRequest(BaseModel):
                 }
             ]
         }
+    )
 
 
 class EmbeddingRequest(BaseModel):
@@ -102,12 +102,12 @@ class EmbeddingRequest(BaseModel):
         description="The GGUF filename to use (e.g., 'gemma-3-4b-it-Q4_K_M.gguf')"
     )
     
-    class Config:
-        """Configuration for the EmbeddingRequest model with example data."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "text": "This is a sample text to generate embeddings for.",
                 "model_name": "bartowski/gemma-3-4b-it-GGUF",
                 "filename": "gemma-3-4b-it-Q4_K_M.gguf"
             }
         }
+    )

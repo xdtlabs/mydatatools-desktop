@@ -29,15 +29,15 @@ def load_gemini_model() -> ChatGoogleGenerativeAI:
     Google Gemini service. It requires the GOOGLE_API_KEY environment
     variable to be set.
 
-    Args:
-        local_path (str): This argument is no longer used but kept for
-                          interface compatibility.
-
     Returns:
         ChatGoogleGenerativeAI: An instance of the LangChain Google AI chat model.
 
     Raises:
         ValueError: If the GOOGLE_API_KEY environment variable is not set.
+        
+    Example:
+        >>> gemini_llm = load_gemini_model()
+        >>> response = gemini_llm.invoke("Hello, Gemini!")
     """
     print("[LOADER] Initializing Google Gemini client.")
 
@@ -73,7 +73,11 @@ def load_local_model(model_name: str, filename: str, local_dir: str) -> LlamaCpp
         LlamaCpp: Wrapped pipeline ready for text generation
         
     Raises:
-        Exception: If model loading fails due to missing files
+        Exception: If model loading fails due to missing files or corrupted architecture.
+
+    Example:
+        >>> llm = load_local_model("bartowski/gemma", "gemma-3-4b.gguf", "./models")
+        >>> response = llm.invoke("Hi!")
     """
     print(f"[LOADER] Attempting to load GGUF model: {model_name}/{filename}")
     
@@ -106,10 +110,13 @@ def load_embedding_model(model_id: str, filename: str, local_dir: str) -> LlamaC
         local_dir (str): Path to the directory for storing/checking model files
         
     Returns:
-        LlamaCpp: LlamaCpp object initialized with embedding capabilities
+        tuple[LlamaCpp, None]: LlamaCpp object initialized with embedding capabilities and a None placeholder for processor.
         
     Raises:
-        Exception: If model download or loading fails
+        Exception: If model download or loading fails.
+
+    Example:
+        >>> embed_model, _ = load_embedding_model("bartowski/gemma", "gemma-embedding.gguf", "./models")
     """
     print(f"[EMBEDDING] Attempting to load embedding model: {model_id}/{filename}")
     
@@ -141,7 +148,15 @@ def generate_text_embedding(text: str, model: Any, processor: Any) -> List[float
         processor (Any): Not used for LlamaCpp
         
     Returns:
-        List[float]: A list of float values representing the text embedding
+        List[float]: A list of float values representing the text embedding.
+        
+    Raises:
+        ValueError: If the provided model instance lacks embedding capabilities.
+
+    Example:
+        >>> embed_model, processor = load_embedding_model("repo", "filename", "./models")
+        >>> vector = generate_text_embedding("Some text", embed_model, processor)
+        >>> print(len(vector))
     """
     from langchain_community.embeddings import LlamaCppEmbeddings
     # If using LlamaCpp directly (from LangChain's LLM), we can use the underlying client

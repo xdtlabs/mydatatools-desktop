@@ -6,9 +6,8 @@ the business logic for the API endpoints. Each function corresponds to a
 specific API endpoint and handles request processing, validation, and response generation.
 """
 from typing import Optional, Dict, Any
-from fastapi import HTTPException, File, UploadFile
+from fastapi import HTTPException
 from PIL import Image
-from io import BytesIO
 
 
 from .models import ChatRequest, StartSessionRequest, EmbeddingRequest
@@ -327,6 +326,8 @@ async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
             "embedding_dimension": len(embedding)
         }
     
+    except HTTPException:
+        raise
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -336,67 +337,3 @@ async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
             detail=f"Failed to generate embedding: {e}"
         )
 
-
-async def generate_embedding_from_upload(
-    image_file: UploadFile = File(...),
-    text: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Generate embeddings from uploaded image files with optional text combination.
-    
-    Accepts image files via multipart form upload and generates embeddings using
-    the multimodal Gemma model. Supports both image-only embeddings and combined
-    text+image embeddings for multimodal applications.
-    
-    Supported image formats:
-    - PNG, JPEG, GIF, BMP, TIFF
-    - Automatic conversion to RGB format
-    - File size and type validation
-    
-    Args:
-        image_file (UploadFile): Uploaded image file from multipart form
-        text (Optional[str]): Optional text to combine with image for multimodal embedding
-        
-    Returns:
-        Dict[str, Any]: Response with embedding vector, metadata, and file information
-        
-    Raises:
-        HTTPException: If file is not an image (400) or processing fails (500)
-        
-    Example:
-        >>> # Image-only embedding (via form upload)
-        >>> with open("photo.jpg", "rb") as f:
-        ...     files = {"image_file": ("photo.jpg", f, "image/jpeg")}
-        ...     response = requests.post("/embedding/upload", files=files)
-        
-        >>> # Combined text+image embedding
-        >>> with open("photo.jpg", "rb") as f:
-        ...     files = {"image_file": ("photo.jpg", f, "image/jpeg")}
-        ...     data = {"text": "A beautiful sunset over the ocean"}
-        ...     response = requests.post("/embedding/upload", files=files, data=data)
-    """
-    _, embedding_lock = get_locks()
-    
-    # Validate file type
-    if not image_file.content_type or not image_file.content_type.startswith('image/'):
-        raise HTTPException(
-            status_code=400,
-            detail="File must be an image (PNG, JPEG, etc.)"
-        )
-    
-    # Load embedding model if not already loaded
-    async with embedding_lock:
-        embedding_model, embedding_processor = get_embedding_model()
-        if embedding_model is None or embedding_processor is None:
-            # For now, we will raise an error because we replaced the HF multimodal model with LlamaCpp,
-            # which does not easily do image embeddings without explicit mmproj setups.
-            raise HTTPException(
-                status_code=501,
-                detail="Image embeddings via upload are not supported when using LlamaCpp for embeddings. A multimodal HuggingFace Transformers installation is required."
-            )
-            
-    # As this entire route is for image upload, it's inherently unsupported now
-    raise HTTPException(
-        status_code=501,
-        detail="Image embeddings via upload are not supported when using LlamaCpp for embeddings. A multimodal HuggingFace Transformers installation is required."
-    )

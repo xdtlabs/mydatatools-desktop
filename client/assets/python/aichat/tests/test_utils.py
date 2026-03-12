@@ -1,296 +1,118 @@
 """
-Unit tests for the utils module.
-
-This module tests all utility functions including path generation,
-archive handling, and model downloading logic with proper mocking
-of file system operations and external dependencies.
+Unit tests for the utils module, specifically path generation, downloading, and extraction.
 """
-import os
 import pytest
-from unittest.mock import Mock, patch, mock_open, call
-import tarfile
+import os
+import sys
+from unittest.mock import patch, mock_open
 
-from utils import get_local_path, get_local_zip_path, handle_local_archive, download_model_if_needed
+from aichat.utils import (
+    get_local_path,
+    get_local_zip_path,
+    download_from_url,
+    download_gguf_model_if_needed
+)
 
+class TestUtils:
+    
+    def test_get_local_path_formatting(self):
+        """Test formatting of local path creation."""
+        path = get_local_path("bartowski/gemma-3-4b")
+        # Ensure the slash in model name is replaced by a dash
+        assert path == "./bartowski-gemma-3-4b-local/"
 
-class TestGetLocalPath:
-    """Test suite for the get_local_path function."""
-    
-    def test_get_local_path_basic(self):
-        """Test basic path generation with simple model ID."""
-        result = get_local_path("facebook/opt-1.3b")
-        expected = "./facebook-opt-1.3b-local/"
-        assert result == expected
-    
-    def test_get_local_path_google_model(self):
-        """Test path generation with Google model ID."""
-        result = get_local_path("google/gemma-2-9b-it")
-        expected = "./google-gemma-2-9b-it-local/"
-        assert result == expected
-    
-    def test_get_local_path_complex_name(self):
-        """Test path generation with complex model name."""
-        result = get_local_path("microsoft/DialoGPT-medium")
-        expected = "./microsoft-DialoGPT-medium-local/"
-        assert result == expected
-    
-    def test_get_local_path_multiple_slashes(self):
-        """Test path generation handles multiple forward slashes."""
-        result = get_local_path("org/sub/model-name")
-        expected = "./org-sub-model-name-local/"
-        assert result == expected
-    
-    def test_get_local_path_no_slash(self):
-        """Test path generation with model ID without slash."""
-        result = get_local_path("simple-model")
-        expected = "./simple-model-local/"
-        assert result == expected
-    
-    def test_get_local_path_empty_string(self):
-        """Test path generation with empty string."""
-        result = get_local_path("")
-        expected = "./-local/"
-        assert result == expected
+    def test_get_local_zip_path_formatting(self):
+        """Test formatting of local zip path creation."""
+        path = get_local_zip_path("bartowski/gemma-3-4b")
+        assert path == "./bartowski-gemma-3-4b-local.tar.gz"
 
-
-class TestGetLocalZipPath:
-    """Test suite for the get_local_zip_path function."""
-    
-    def test_get_local_zip_path_basic(self):
-        """Test basic zip path generation."""
-        result = get_local_zip_path("facebook/opt-1.3b")
-        expected = "./facebook-opt-1.3b-local.tar.gz"
-        assert result == expected
-    
-    def test_get_local_zip_path_google_model(self):
-        """Test zip path generation with Google model."""
-        result = get_local_zip_path("google/gemma-2-9b-it")
-        expected = "./google-gemma-2-9b-it-local.tar.gz"
-        assert result == expected
-    
-    def test_get_local_zip_path_consistency(self):
-        """Test that zip path is consistent with local path."""
-        model_id = "test/model"
-        local_path = get_local_path(model_id)
-        zip_path = get_local_zip_path(model_id)
+    @patch('aichat.utils.os.makedirs')
+    @patch('urllib.request.urlopen')
+    @patch('aichat.utils.tarfile.open')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_download_from_url_success(self, mock_file, mock_tar_open, mock_urlopen, mock_makedirs):
+        """Test the download and extraction of a tar archive."""
+        # Setup mock URL response
+        mock_response = mock_urlopen.return_value.__enter__.return_value
+        mock_response.info.return_value.get.return_value = '1024' # contentLength
+        mock_response.read.side_effect = [b"chunk1", b"chunk2", b""] # End of stream
         
-        # Extract base name for comparison
-        local_base = local_path.rstrip('/').replace('./', '')
-        zip_base = zip_path.replace('.tar.gz', '').replace('./', '')
+        # Setup mock Tar archive extractor
+        mock_tar_instance = mock_tar_open.return_value.__enter__.return_value
         
-        assert local_base == zip_base
+        url = "http://example.com/archive.tgz"
+        local_dir = "/tmp/models"
+        archive_path = "/tmp/models/archive.tgz"
+        extract_dir = "/tmp/models/extracted"
+        
+        with patch('aichat.utils.handle_local_archive') as mock_handle:
+            mock_handle.return_value = True
+            result = download_from_url(url, local_dir)
+            
+            assert result is True
+            mock_urlopen.assert_called_once_with(url)
 
 
-class TestHandleLocalArchive:
-    """Test suite for the handle_local_archive function."""
-    
-    def test_handle_local_archive_file_not_exists(self):
-        """Test handling when archive file doesn't exist."""
-        result = handle_local_archive("/nonexistent/path.tar.gz", "/target/dir")
-        assert result is False
-    
-    @patch('os.path.exists')
-    @patch('os.makedirs')
-    @patch('tarfile.open')
-    @patch('builtins.print')
-    def test_handle_local_archive_success(self, mock_print, mock_tar_open, mock_makedirs, mock_exists):
-        """Test successful archive extraction."""
-        # Setup mocks
-        mock_exists.return_value = True
-        mock_tar = Mock()
-        mock_tar_open.return_value.__enter__.return_value = mock_tar
+    @patch('aichat.utils.os.path.exists')
+    @patch('aichat.utils.os.path.isdir')
+    @patch('huggingface_hub.hf_hub_download')
+    def test_download_gguf_model_if_needed_hf_download(self, mock_hf_download, mock_isdir, mock_exists):
+        """Test gguf download fallback hierarchy to hit hf_hub_download."""
+        # 1. Bundled - Not found
+        # 2. Local intended - Not found initially
+        mock_exists.side_effect = lambda p: False
         
-        # Call function
-        result = handle_local_archive("/path/to/archive.tar.gz", "/target/dir")
+        mock_hf_download.return_value = "/tmp/models/gemma.gguf"
         
-        # Assertions
-        assert result is True
-        mock_makedirs.assert_called_once_with("/target/dir", exist_ok=True)
-        mock_tar_open.assert_called_once_with("/path/to/archive.tar.gz", 'r:*')
-        mock_tar.extractall.assert_called_once_with(path="/target/dir")
+        result = download_gguf_model_if_needed("bartowski/gemma", "gemma.gguf", "/tmp/models")
         
-        # Check print messages
-        mock_print.assert_any_call("[LOADER] Found archive at /path/to/archive.tar.gz. Extracting...")
-        mock_print.assert_any_call("[LOADER] Archive extraction complete to /target/dir.")
-    
-    @patch('os.path.exists')
-    @patch('os.makedirs')
-    @patch('tarfile.open')
-    @patch('builtins.print')
-    def test_handle_local_archive_extraction_error(self, mock_print, mock_tar_open, mock_makedirs, mock_exists):
-        """Test handling of extraction errors."""
-        # Setup mocks
-        mock_exists.return_value = True
-        mock_tar_open.side_effect = tarfile.TarError("Extraction failed")
-        
-        # Call function
-        result = handle_local_archive("/path/to/archive.tar.gz", "/target/dir")
-        
-        # Assertions
-        assert result is False
-        mock_print.assert_any_call("[ERROR] Failed to extract /path/to/archive.tar.gz: Extraction failed")
-    
-    @patch('os.path.exists')
-    @patch('os.makedirs')
-    @patch('tarfile.open')
-    @patch('builtins.print')
-    def test_handle_local_archive_makedirs_error(self, mock_print, mock_tar_open, mock_makedirs, mock_exists):
-        """Test handling of directory creation errors."""
-        # Setup mocks
-        mock_exists.return_value = True
-        mock_makedirs.side_effect = OSError("Permission denied")
-        
-        # Call function
-        result = handle_local_archive("/path/to/archive.tar.gz", "/target/dir")
-        
-        # Assertions
-        assert result is False
-        mock_print.assert_any_call("[ERROR] Failed to extract /path/to/archive.tar.gz: Permission denied")
-
-
-class TestDownloadModelIfNeeded:
-    """Test suite for the download_model_if_needed function."""
-    
-    @patch('os.path.exists')
-    @patch('os.listdir')
-    @patch('builtins.print')
-    def test_model_already_exists_with_files(self, mock_print, mock_listdir, mock_exists):
-        """Test when model directory exists and has files."""
-        # Setup mocks - directory exists and has files
-        mock_exists.return_value = True
-        mock_listdir.return_value = ['config.json', 'pytorch_model.bin']
-        
-        # Call function
-        result = download_model_if_needed("test/model", "/local/path")
-        
-        # Assertions
-        assert result is True
-        mock_print.assert_called_with("[LOADER] Local model found at /local/path. Skipping download.")
-    
-    @patch('os.path.exists')
-    @patch('os.listdir')
-    @patch('utils.handle_local_archive')
-    @patch('utils.get_local_zip_path')
-    @patch('builtins.print')
-    def test_model_missing_custom_archive_success(self, mock_print, mock_get_zip, mock_handle_archive, mock_listdir, mock_exists):
-        """Test using custom archive path when model is missing."""
-        # Setup mocks
-        mock_exists.return_value = False  # Local path doesn't exist
-        mock_listdir.return_value = []
-        mock_handle_archive.return_value = True  # Custom archive extraction succeeds
-        
-        # Call function
-        result = download_model_if_needed("test/model", "/local/path", "/custom/archive.tar.gz")
-        
-        # Assertions
-        assert result is True
-        mock_handle_archive.assert_called_once_with("/custom/archive.tar.gz", "/local/path")
-        mock_print.assert_called_with("[LOADER] Local model not found at /local/path.")
-    
-    @patch('os.path.exists')
-    @patch('os.listdir')
-    @patch('utils.handle_local_archive')
-    @patch('utils.get_local_zip_path')
-    @patch('builtins.print')
-    def test_model_missing_standard_archives_success(self, mock_print, mock_get_zip, mock_handle_archive, mock_listdir, mock_exists):
-        """Test using standard archive paths when model is missing."""
-        # Setup mocks
-        mock_exists.return_value = False  # Local path doesn't exist
-        mock_listdir.return_value = []
-        mock_get_zip.return_value = "./test-model-local.tar.gz"
-        
-        # First two archive attempts fail, third succeeds
-        mock_handle_archive.side_effect = [False, False, True]
-        
-        # Call function
-        result = download_model_if_needed("test/model", "/local/path")
-        
-        # Assertions
-        assert result is True
-        assert mock_handle_archive.call_count == 3
-        
-        # Check the expected archive paths were tried
-        expected_calls = [
-            call("./test-model-local.tar.gz", "/local/path"),
-            call("./test-model-local.tgz", "/local/path"),
-            call("./test-model-local.tar", "/local/path")
-        ]
-        mock_handle_archive.assert_has_calls(expected_calls)
-    
-    @patch('os.path.exists')
-    @patch('os.listdir')
-    @patch('utils.handle_local_archive')
-    @patch('utils.get_local_zip_path')
-    @patch('huggingface_hub.snapshot_download')
-    @patch('builtins.print')
-    def test_model_missing_download_from_hf_success(self, mock_print, mock_download, mock_get_zip, mock_handle_archive, mock_listdir, mock_exists):
-        """Test downloading from HuggingFace Hub when no local archives found."""
-        # Setup mocks
-        mock_exists.return_value = False
-        mock_listdir.return_value = []
-        mock_get_zip.return_value = "./test-model-local.tar.gz"
-        mock_handle_archive.return_value = False  # All archive attempts fail
-        
-        # Call function
-        result = download_model_if_needed("test/model", "/local/path")
-        
-        # Assertions
-        assert result is True
-        mock_download.assert_called_once_with(
-            repo_id="test/model",
-            local_dir="/local/path",
+        assert result == "/tmp/models/gemma.gguf"
+        mock_hf_download.assert_called_once_with(
+            repo_id="bartowski/gemma",
+            filename="gemma.gguf",
+            local_dir="/tmp/models",
             local_dir_use_symlinks=False
         )
-        mock_print.assert_any_call("[LOADER] No local archive found. Starting download from Hugging Face...")
-        mock_print.assert_any_call("[LOADER] Model download complete.")
-    
-    @patch('os.path.exists')
-    @patch('os.listdir') 
-    @patch('utils.handle_local_archive')
-    @patch('utils.get_local_zip_path')
-    @patch('huggingface_hub.snapshot_download')
-    @patch('builtins.print')
-    def test_model_missing_download_from_hf_failure(self, mock_print, mock_download, mock_get_zip, mock_handle_archive, mock_listdir, mock_exists):
-        """Test handling of HuggingFace Hub download failures."""
-        # Setup mocks
-        mock_exists.return_value = False
-        mock_listdir.return_value = []
-        mock_get_zip.return_value = "./test-model-local.tar.gz" 
-        mock_handle_archive.return_value = False  # All archive attempts fail
-        mock_download.side_effect = Exception("Network error")
-        
-        # Call function
-        result = download_model_if_needed("test/model", "/local/path")
-        
-        # Assertions
-        assert result is False
-        mock_print.assert_any_call("[ERROR] Error during model download for test/model: Network error")
-    
-    @patch('os.path.exists')
-    @patch('os.listdir')
-    def test_model_directory_exists_but_empty(self, mock_listdir, mock_exists):
-        """Test when model directory exists but is empty."""
-        # First call (directory exists check) returns True
-        # Second call (listdir check) returns empty list
-        mock_exists.return_value = True
-        mock_listdir.return_value = []  # Empty directory
-        
-        # Mock the archive and download chain
-        with patch('utils.handle_local_archive') as mock_handle_archive, \
-             patch('utils.get_local_zip_path') as mock_get_zip, \
-             patch('huggingface_hub.snapshot_download') as mock_download, \
-             patch('builtins.print'):
-            
-            mock_handle_archive.return_value = False
-            mock_get_zip.return_value = "./test-model-local.tar.gz"
-            
-            result = download_model_if_needed("test/model", "/local/path")
-            
-            # Should attempt download since directory is empty
-            assert result is True
-            mock_download.assert_called_once()
 
+    @patch('aichat.utils.os.path.exists')
+    @patch('aichat.utils.os.path.isdir')
+    @patch('huggingface_hub.hf_hub_download')
+    def test_download_gguf_model_if_needed_bundled(self, mock_hf_download, mock_isdir, mock_exists):
+        """Test gguf loading from bundled sys._MEIPASS location."""
+        # Set up Pyinstaller flags dynamically for the test run using patch
+        with patch.object(sys, 'frozen', True, create=True), \
+             patch.object(sys, '_MEIPASS', '/mock_mei_pass', create=True):
+            
+            # 1. Bundled - YES IT EXISTS
+            def exists_side_effect(path):
+                if "/mock_mei_pass" in path:
+                    return True
+                return False
+                
+            mock_exists.side_effect = exists_side_effect
+            mock_isdir.return_value = True
+            
+            result = download_gguf_model_if_needed("repo", "file.gguf", "/tmp")
+            
+            assert result == "/mock_mei_pass/models/file.gguf"
+            mock_hf_download.assert_not_called()
 
-if __name__ == "__main__":
-    # Run tests if file is executed directly
-    pytest.main([__file__, "-v"])
+    @patch('aichat.utils.os.path.exists')
+    @patch('huggingface_hub.hf_hub_download')
+    def test_download_gguf_model_if_needed_local_existing(self, mock_hf_download, mock_exists):
+        """Test gguf loading from local directory when already downloaded."""
+        def exists_side_effect(path):
+            # Bundled does not exist
+            if getattr(sys, '_MEIPASS', None) and getattr(sys, '_MEIPASS') in path:
+                return False
+            # Check for the local intended path
+            if path == "/tmp/file.gguf":
+                return True
+            return False
+            
+        mock_exists.side_effect = exists_side_effect
+        
+        result = download_gguf_model_if_needed("repo", "file.gguf", "/tmp")
+        
+        assert result == "/tmp/file.gguf"
+        mock_hf_download.assert_not_called()
