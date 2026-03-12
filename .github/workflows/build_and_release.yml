@@ -48,7 +48,12 @@ jobs:
         working-directory: client/assets/python/aichat
         run: |
           pdm install
+          mkdir -p models
+          huggingface-cli download bartowski/gemma-3-4b-it-GGUF gemma-3-4b-it-Q4_K_M.gguf --local-dir models --local-dir-use-symlinks False
           pdm run pyinstaller main.spec
+        env:
+          FORCE_CMAKE: "1"
+          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DGGML_METAL=on -DGGML_BLAS=on -DGGML_BLAS_VENDOR=OpenBLAS' || '' }}
 
       - name: Zip Python Executable (macOS/Linux)
         if: matrix.os != 'windows-latest'

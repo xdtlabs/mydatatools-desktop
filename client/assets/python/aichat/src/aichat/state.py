@@ -8,14 +8,11 @@ model loading operations are coordinated across concurrent requests.
 import asyncio
 from typing import Optional, Any, Tuple
 
-# --- FIX: Conditionally Import HuggingFacePipeline ---
-try:
-    from langchain_huggingface import HuggingFacePipeline
-except ImportError:
-    from langchain_community.llms import HuggingFacePipeline
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.llms import LlamaCpp
 
 # Global variables to store the currently active model instance and status
-llm_instance: Optional[HuggingFacePipeline] = None
+llm_instance: Optional[LlamaCpp | ChatGoogleGenerativeAI] = None
 current_model_id: Optional[str] = None
 
 # Global variables for embedding model (separate from chat model)
@@ -28,31 +25,28 @@ model_lock = asyncio.Lock()
 embedding_lock = asyncio.Lock()
 
 
-def get_llm_instance() -> Optional[HuggingFacePipeline]:
+def get_llm_instance() -> Optional[LlamaCpp | ChatGoogleGenerativeAI]:
     """
     Get the currently loaded LLM instance for chat operations.
     
     Returns:
-        Optional[HuggingFacePipeline]: The current LLM instance, or None if no model is loaded
+        Optional[LlamaCpp | ChatGoogleGenerativeAI]: The current LLM instance, or None if no model is loaded
         
-    Example:
-        >>> llm = get_llm_instance()
-        >>> if llm:
-        ...     response = llm.invoke("Hello, world!")
+        >>> response = llm.invoke("Hello, world!")
     """
     return llm_instance
 
 
-def set_llm_instance(instance: Optional[HuggingFacePipeline]) -> None:
+def set_llm_instance(instance: Optional[LlamaCpp | ChatGoogleGenerativeAI]) -> None:
     """
     Set the current LLM instance for chat operations.
     
     Args:
-        instance (Optional[HuggingFacePipeline]): The LLM instance to store, or None to clear
+        instance (Optional[LlamaCpp | ChatGoogleGenerativeAI]): The LLM instance to store, or None to clear
         
     Example:
-        >>> from langchain_huggingface import HuggingFacePipeline
-        >>> pipeline = HuggingFacePipeline(...)
+        >>> from langchain_community.llms import LlamaCpp
+        >>> pipeline = LlamaCpp(...)
         >>> set_llm_instance(pipeline)
     """
     global llm_instance

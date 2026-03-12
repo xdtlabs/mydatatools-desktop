@@ -22,7 +22,6 @@ from typing import Optional
 
 from .config import DEFAULT_LOCAL_MODEL, API_TITLE, API_DESCRIPTION
 from .models import ChatRequest, StartSessionRequest, EmbeddingRequest
-from .utils import get_local_path, download_model_if_needed
 from . import routes
 
 
@@ -74,5 +73,13 @@ def main() -> None:
 
 if __name__ == "__main__":
     import multiprocessing
+    
+    # Set the multiprocessing start method to "spawn" to prevent fork bombs on macOS
+    # when loading large models with Transformers
+    try:
+        multiprocessing.set_start_method('spawn')
+    except RuntimeError:
+        pass # The start method has already been set
+        
     multiprocessing.freeze_support()
     main()

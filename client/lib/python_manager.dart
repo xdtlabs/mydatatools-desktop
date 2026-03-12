@@ -128,7 +128,8 @@ class PythonManager {
               'Content-Type': 'application/json; charset=UTF-8',
             },
             body: jsonEncode(<String, dynamic>{
-              "model_name": "google/gemma-3-4b-it",
+              "model_name": "bartowski/gemma-3-4b-it-GGUF",
+              "filename": "gemma-3-4b-it-Q4_K_M.gguf",
             }),
           );
           logger.d(
@@ -138,17 +139,27 @@ class PythonManager {
       });
 
       stdoutLines.listen((line) {
-        logger.d('[python] $line');
+        logger.i('[python] $line');
+        print('[python] $line'); // Ensure standard Flutter debug console output
+        // If it's a downloading/loading message, blast it to the UI status bar!
+        if (line.contains('[LOADER]')) {
+          logger.s(line.replaceAll('[LOADER]', '').trim());
+        }
       });
 
       final urlRegex = RegExp(r'(http?:\/\/[^\s]+)');
       stderrLines.listen((line) {
-        logger.d('[python] $line');
+        logger.i('[python] $line');
+        print('[python] $line');
+        if (line.contains('[LOADER]')) {
+          logger.s(line.replaceAll('[LOADER]', '').trim());
+        }
         final match = urlRegex.firstMatch(line);
         if (match != null) {
           final url = match.group(1);
           if (url != null) {
-            logger.d('[python] AI Chat service is running at: $url');
+            logger.i('[python] AI Chat service is running at: $url');
+            print('[python] AI Chat service is running at: $url');
             // Store this URL in a variable for later use.
             MainApp.llmServiceUrl.add(url);
             isLLMServiceRunning.value = true;

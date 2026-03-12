@@ -9,7 +9,11 @@ cd client/assets/python/aichat
 # 1. Install dependencies
 pdm install
 
-# 2. Compile the executable
+# 2. Download the default GGUF model manually
+# This is required so the model is bundled in the final zip via main.spec
+hf download bartowski/google_gemma-3-4b-it-GGUF google_gemma-3-4b-it-Q4_K_M.gguf --local-dir models
+
+# 3. Compile the executable
 pdm run pyinstaller main.spec
 
 # 3. Zip the compiled output for Flutter
@@ -19,10 +23,6 @@ cd ../../../../../app/
 
 # 4. Copy to your application support directory to test locally
 cp ./*.zip ~/Library/Application\ Support/mydata.tools/aichat/
-```
-```bash
-# cd ../../../
-# dart run serious_python:main package --asset app/aichat-darwin.zip -r -r -r assets/python/aichat/requirements.txt assets/python/aichat -p Darwin
 ```
 
 ### Find open port
