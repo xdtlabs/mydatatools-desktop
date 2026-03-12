@@ -92,7 +92,7 @@ def load_local_model(model_name: str, filename: str, local_dir: str) -> LlamaCpp
         max_tokens=MAX_NEW_TOKENS,
         n_ctx=4096,
         n_gpu_layers=-1, # Offload all layers to GPU (Metal on Mac)
-        verbose=True,    # Useful for debugging init info
+        verbose=False,   # Disabled to clean up flutter logs
     )
     
     return llm
