@@ -21,6 +21,8 @@ hiddenimports = [
     'transformers',
     'sklearn.utils._typedefs', # Common missing import for scikit-learn/numpy
     'aichat.model_manager',
+    'tornado',
+    'tornado.gen',
 ]
 
 # Collect all for complex packages
