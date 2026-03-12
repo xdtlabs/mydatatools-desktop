@@ -27,6 +27,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Must add this line.
   await windowManager.ensureInitialized();
+  
+  // Intercept close events to manually shutdown python service before exit
+  await windowManager.setPreventClose(true);
+
   //set log level
   Logger.level = Level.debug;
 
@@ -63,7 +67,7 @@ class MainApp extends StatefulWidget {
 }
 
 // In your top-level app widget (MainApp State) call stop when the app is disposed:
-class MainAppState extends State<MainApp> with WidgetsBindingObserver {
+class MainAppState extends State<MainApp> with WidgetsBindingObserver, WindowListener {
   bool _needsSetup = false;
   bool _isSetupComplete = false;
   PythonManager? pythonManager;
@@ -80,13 +84,15 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     // Initialize the Database and Python Server
     _initStartup();
 
+    windowManager.addListener(this);
+
     _lifecycleListener = AppLifecycleListener(
       onExitRequested: () async {
         // This callback is invoked when the application is requested to exit.
         // You can perform cleanup or prompt the user for confirmation here.
         // Return AppExitResponse.exit to allow exit, or AppExitResponse.cancel to prevent it.
         print('Exit requested!');
-        pythonManager?.stopAiChatService();
+        await pythonManager?.stopAiChatService();
         return AppExitResponse.exit;
       },
       onStateChange: (AppLifecycleState state) {
@@ -198,7 +204,19 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
       AuthDialogManager(AppRouter.rootNavigatorKey).init();
 
   @override
+  void onWindowClose() async {
+    bool isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose) {
+      // Hide the window immediately for a snappier UX while background python service gracefully terminates
+      await windowManager.hide();
+      await pythonManager?.stopAiChatService();
+      await windowManager.destroy();
+    }
+  }
+
+  @override
   void dispose() {
+    windowManager.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
     _lifecycleListener.dispose();
     super.dispose();

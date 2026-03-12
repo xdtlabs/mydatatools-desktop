@@ -70,8 +70,7 @@ class TestUtils:
         mock_hf_download.assert_called_once_with(
             repo_id="bartowski/gemma",
             filename="gemma.gguf",
-            local_dir="/tmp/models",
-            local_dir_use_symlinks=False
+            local_dir="/tmp/models"
         )
 
     @patch('aichat.utils.os.path.exists')

@@ -22,8 +22,14 @@ zip -r ../../../../../app/aichat-macos.zip .
 cd ../../../../../app/
 
 # 4. Copy to your application support directory to test locally
-cp ./*.zip ~/Library/Application\ Support/mydata.tools/aichat/
+cp ./*.zip ~/Library/Application\ Support/mydata.tools/
 ```
+
+## All in one
+```
+clear && cd client/assets/python/aichat && pdm install && pdm run pyinstaller main.spec && cd dist/aichat && zip -r ../../../../../app/aichat-macos.zip . && cd ../../../../../app/ && cp ./*.zip ~/Library/Application\ Support/mydata.tools/ && cd ../..
+```
+
 
 ### Find open port
 ```bash

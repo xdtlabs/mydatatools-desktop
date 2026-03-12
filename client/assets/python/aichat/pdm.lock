@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:f71eb32a139e397076960758d399ae6e544bd23e57c5576b3d2bf621a69456a1"
+content_hash = "sha256:36190ba988c097e634c20f3373b7d78c0fa26745252644eb75201cd7f08ec23b"
 
 [[metadata.targets]]
 requires_python = ">=3.11,<3.14"
@@ -1016,7 +1016,7 @@ files = [
 
 [[package]]
 name = "llama-cpp-python"
-version = "0.3.7"
+version = "0.3.16"
 requires_python = ">=3.8"
 summary = "Python bindings for the llama.cpp library"
 groups = ["default"]
@@ -1027,7 +1027,7 @@ dependencies = [
     "typing-extensions>=4.5.0",
 ]
 files = [
-    {file = "llama_cpp_python-0.3.7.tar.gz", hash = "sha256:0566a0dcc0f38005c4093309a87f67c2452449522e3e17e15cd735a62957894c"},
+    {file = "llama_cpp_python-0.3.16.tar.gz", hash = "sha256:34ed0f9bd9431af045bb63d9324ae620ad0536653740e9bb163a2e1fcb973be6"},
 ]
 
 [[package]]

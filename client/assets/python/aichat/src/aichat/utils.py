@@ -197,12 +197,16 @@ def download_gguf_model_if_needed(model_id: str, filename: str, local_path: str)
     # 1. Check bundled PyInstaller path first
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         bundled_path = os.path.join(sys._MEIPASS, 'models', filename)
+        print(f"[LOADER] Checking for bundled PyInstaller model at {bundled_path}")
         if os.path.exists(bundled_path):
             print(f"[LOADER] Found bundled PyInstaller model at {bundled_path}.")
             return bundled_path
+    else:
+        print("[LOADER] Not running as a PyInstaller bundle. Skipping embedded model check.")
             
     # 2. Check intended local path
     target_file_path = os.path.join(local_path, filename)
+    print(f"[LOADER] Checking for local model fallback at {target_file_path}")
     if os.path.exists(target_file_path):
         print(f"[LOADER] Local model found at {target_file_path}. Skipping download.")
         return target_file_path
@@ -214,8 +218,7 @@ def download_gguf_model_if_needed(model_id: str, filename: str, local_path: str)
         downloaded_path = hf_hub_download(
             repo_id=model_id,
             filename=filename,
-            local_dir=local_path,
-            local_dir_use_symlinks=False
+            local_dir=local_path
         )
         print(f"[LOADER] Model download complete: {downloaded_path}")
         return downloaded_path
