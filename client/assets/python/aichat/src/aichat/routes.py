@@ -180,6 +180,7 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
     - Includes optional system instructions
     - Strips input prompt from model output
     - Handles response formatting and cleanup
+    - Optionally wraps response in GenUI JSON format
     
     Args:
         request (ChatRequest): Request containing the user prompt and optional system instruction
@@ -206,16 +207,30 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
         )
 
     try:
-        # Gemma 2 uses a specific instruction format (BOS/EOS tokens).
-        # We manually construct the prompt to include the system instruction and user query.
+        # Import GenUI helpers and ConversationManager
+        from .genui_schema import GENUI_SYSTEM_PROMPT
+        from .state import conversation_manager
         
-        # A common instruction format for Gemma 2
-        full_prompt = f"<start_of_turn>user\n\n"
-        if request.system_instruction:
-            full_prompt += f"System Instruction: {request.system_instruction}\n\n"
+        # Retrieve history for this session
+        history_turns = await conversation_manager.get_history(request.session_id)
+        history_text = "".join(history_turns)
         
-        full_prompt += f"{request.prompt}<end_of_turn>\n\n<start_of_turn>model\n"
+        # Build system instruction
+        system_inst = request.system_instruction or ""
+        if request.use_genui:
+            # Add GenUI instructions to system prompt
+            system_inst = f"{system_inst}\n\n{GENUI_SYSTEM_PROMPT}" if system_inst else GENUI_SYSTEM_PROMPT
+        
+        # Construct the new turn
+        new_turn = f"<start_of_turn>user\n"
+        if system_inst and not history_text: # Only add system instruction to the very first turn
+             new_turn += f"System Instruction: {system_inst}\n\n"
+        new_turn += f"{request.prompt}<end_of_turn>\n<start_of_turn>model\n"
 
+        # Combine history and new turn
+        full_prompt = history_text + new_turn
+
+        print(f"[DEBUG] Full prompt: {full_prompt}")
         # The LangChain LlamaCpp wrapper takes a single string input
         response_text = llm_instance.invoke(full_prompt)
         ai_response = response_text.strip()
@@ -232,6 +247,7 @@ async def generate_chat_response(request: ChatRequest) -> Dict[str, Any]:
             status_code=500,
             detail=f"Failed to generate response: {e}"
         )
+
 
 
 async def generate_embedding(request: EmbeddingRequest) -> Dict[str, Any]:
