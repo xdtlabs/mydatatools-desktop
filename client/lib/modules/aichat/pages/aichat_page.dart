@@ -3,6 +3,8 @@ import 'package:genui/genui.dart';
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/modules/aichat/services/local_llm_content_generator.dart';
 import 'package:mydatatools/python_manager.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:file_picker/file_picker.dart';
 
 class AichatPage extends StatefulWidget {
   const AichatPage({super.key});
@@ -27,9 +29,11 @@ class GenUiSurfaceItem extends ChatItem {
 class _AichatPage extends State<AichatPage> {
   AppLogger logger = AppLogger(null);
   bool _isLLMServiceRunning = PythonManager.isLLMServiceRunning.value;
-  String _selectedModel = 'Local LLM';
-  final List<String> _models = ['Local LLM', 'Gemini', 'ChatGPT', 'Grok'];
+  String _selectedModel = 'Gemini 3 Flash';
+  final List<String> _models = ['Gemini 3 Flash', 'Local LLM', 'ChatGPT', 'Grok'];
   final _textController = TextEditingController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
 
   late final A2uiMessageProcessor _a2uiMessageProcessor;
   late final GenUiConversation _genUiConversation;
@@ -38,6 +42,7 @@ class _AichatPage extends State<AichatPage> {
   @override
   void initState() {
     super.initState();
+    _initSpeech();
 
     // listen for changes
     PythonManager.isLLMServiceRunning.addListener(() {
@@ -139,6 +144,43 @@ class _AichatPage extends State<AichatPage> {
     });
   }
 
+  void _initSpeech() async {
+    try {
+      await _speech.initialize(
+        onStatus: (status) => logger.d('Speech status: $status'),
+        onError: (errorNotification) => logger.e('Speech error: $errorNotification'),
+      );
+      if (mounted) setState(() {});
+    } catch (e) {
+      logger.e('Failed to initialize speech: $e');
+    }
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          logger.d('Speech status: $status');
+          if (status == 'done' || status == 'notListening') {
+            if (mounted) setState(() => _isListening = false);
+          }
+        },
+        onError: (errorNotification) => logger.e('Speech error: $errorNotification'),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) => setState(() {
+            _textController.text = val.recognizedWords;
+          }),
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
   void _sendMessage(String message) {
     if (message.trim().isEmpty) {
       return;
@@ -156,6 +198,9 @@ class _AichatPage extends State<AichatPage> {
       _chatItems.add(TextMessageItem(role: 'user', text: message));
     });
 
+    if (_genUiConversation.contentGenerator is LocalLlmContentGenerator) {
+      (_genUiConversation.contentGenerator as LocalLlmContentGenerator).model = _selectedModel;
+    }
     _genUiConversation.sendRequest(UserMessage.text(message));
     _textController.clear();
   }
@@ -248,84 +293,124 @@ class _AichatPage extends State<AichatPage> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  offset: const Offset(0, -2),
-                  blurRadius: 5,
-                  color: Colors.grey.withValues(alpha: 0.1),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            color: Colors.white,
             child: Container(
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25.0),
-                boxShadow: [
-                  BoxShadow(
-                    offset: const Offset(0, 3),
-                    blurRadius: 5,
-                    color: Colors.grey.withValues(alpha: 0.5),
-                  ),
-                ],
+                color: const Color(0xFFF2F2F7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E5EA), width: 1),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                     controller: _textController,
                     onSubmitted: _sendMessage,
                     keyboardType: TextInputType.multiline,
                     minLines: 1,
-                    maxLines: 5,
+                    maxLines: 10,
+                    style: const TextStyle(fontSize: 15, color: Colors.black87),
                     decoration: const InputDecoration(
-                      hintText: "Ask me anything...",
+                      hintText: "Ask anything, @ to mention, / for workflows",
+                      hintStyle: TextStyle(color: Color(0xFFAEB1B7), fontSize: 15),
                       contentPadding: EdgeInsets.symmetric(
-                        horizontal: 20.0,
-                        vertical: 10.0,
+                        horizontal: 12.0,
+                        vertical: 12.0,
                       ),
                       border: InputBorder.none,
+                      isDense: true,
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    padding: const EdgeInsets.only(left: 4, right: 8, bottom: 4),
                     child: Row(
                       children: [
+                        // + Icon
                         IconButton(
-                          icon: const Icon(Icons.add),
-                          tooltip: 'Add Files',
-                          onPressed: () {
-                            // TODO: implement file picking
-                          },
-                        ),
-                        const Spacer(),
-                        DropdownButton<String>(
-                          value: _selectedModel,
-                          onChanged: (String? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _selectedModel = newValue;
-                              });
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(Icons.add, color: Color(0xFF999999), size: 20),
+                          onPressed: () async {
+                            FilePickerResult? result = await FilePicker.platform.pickFiles(
+                              allowMultiple: true,
+                            );
+                            if (result != null) {
+                              logger.d('Picked files: ${result.paths}');
                             }
                           },
-                          items:
-                              _models.map<DropdownMenuItem<String>>((
-                                String value,
-                              ) {
+                        ),
+                        const SizedBox(width: 12),
+                        // Model Dropdown
+                        Theme(
+                          data: Theme.of(context).copyWith(
+                            hoverColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedModel,
+                              icon: const Padding(
+                                padding: EdgeInsets.only(left: 4.0),
+                                child: Icon(Icons.keyboard_arrow_up, size: 16, color: Color(0xFF8E8E93)),
+                              ),
+                              elevation: 2,
+                              onChanged: (String? newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    _selectedModel = newValue;
+                                  });
+                                }
+                              },
+                              items: _models.map<DropdownMenuItem<String>>((String value) {
                                 return DropdownMenuItem<String>(
                                   value: value,
-                                  child: Text(value),
+                                  child: Text(
+                                    value,
+                                    style: const TextStyle(
+                                      color: Color(0xFF8E8E93),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
                                 );
                               }).toList(),
-                          underline: Container(),
+                            ),
+                          ),
                         ),
+                        const Spacer(),
+                        // Voice Icon
                         IconButton(
-                          icon: const Icon(Icons.send),
-                          tooltip: 'Send',
-                          onPressed: () {
-                            _sendMessage(_textController.text);
-                          },
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            _isListening ? Icons.mic : Icons.mic_none_outlined,
+                            color: _isListening ? Colors.red : const Color(0xFF3C3C43).withOpacity(0.6),
+                            size: 22,
+                          ),
+                          onPressed: _listen,
+                        ),
+                        // Send Icon (Arrow in circle)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFD1D1D6),
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          onPressed: () => _sendMessage(_textController.text),
                         ),
                       ],
                     ),

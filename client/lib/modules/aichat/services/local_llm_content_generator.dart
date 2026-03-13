@@ -16,6 +16,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
   final _textResponseController = StreamController<String>.broadcast();
   final _errorController = StreamController<ContentGeneratorError>.broadcast();
   final _isProcessing = ValueNotifier<bool>(false);
+  String? model; // Selected model ID
   // We still keep local history for UI purposes if needed, but don't send it to server
   final List<ChatMessage> _localHistory = [];
   // Generate a unique session ID for this instance
@@ -73,6 +74,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
           "system_instruction": systemInstruction,
           "use_genui": true,
           "session_id": _sessionId, // Send session ID
+          "model": model, // Send model ID
         }),
       );
 
