@@ -73,7 +73,7 @@ jobs:
         working-directory: ./client/assets/python/aichat
         run: |
           pdm run pyinstaller -y main.spec
-          mkdir -p ../../../../app
+          mkdir -p ../../../app
           cd dist/aichat && zip -r ../../../../../app/aichat-macos.zip .
 
       - name: Upload Python Artifact
