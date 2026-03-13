@@ -18,6 +18,8 @@ jobs:
       - name: Install huggingface-cli
         run: pip install huggingface-hub
       - name: Download GGUF Model from Hugging Face
+        env:
+          HUGGING_FACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python -c "
           from huggingface_hub import hf_hub_download

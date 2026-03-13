@@ -57,6 +57,7 @@ jobs:
         env:
           FORCE_CMAKE: "1"
           CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DGGML_METAL=on -DGGML_BLAS=on -DGGML_BLAS_VENDOR=OpenBLAS' || '' }}
+          HUGGING_FACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
 
       - name: Zip Python Executable (macOS/Linux)
         if: matrix.os != 'windows-latest'
