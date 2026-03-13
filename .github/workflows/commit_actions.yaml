@@ -46,17 +46,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
+
+      - name: Install PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Build Tools
+        run: brew install cmake ninja
+
       - name: Install Python dependencies
-        run: |
-          pip install -r assets/python/aichat/requirements.txt
-          pip install pyinstaller
+        working-directory: ./client/assets/python/aichat
+        run: pdm install --dev
+        env:
+          FORCE_CMAKE: "1"
+          CMAKE_ARGS: "-DGGML_METAL=on"
           
       - name: Build Python Server
+        working-directory: ./client/assets/python/aichat
         run: |
-          cd assets/python/aichat
-          python -m PyInstaller main.spec --clean --noconfirm
-          mkdir -p ../../../app
+          pdm run pyinstaller -y main.spec
+          mkdir -p ../../../../app
           cd dist/aichat && zip -r ../../../../../app/aichat-macos.zip .
 
       - name: Upload Python Artifact
