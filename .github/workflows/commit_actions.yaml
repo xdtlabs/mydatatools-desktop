@@ -5,7 +5,10 @@ run-name: ${{ github.actor }} is building and releasing (to github) the mac,wind
 on:
   push:
     branches: [ "main", "develop", "feature/cicd" ]
-    
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   download-assets:
     runs-on: ubuntu-latest
@@ -27,7 +30,7 @@ jobs:
       run:
         working-directory: ./client
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - uses: actions/setup-python@v5
         with:
@@ -59,7 +62,7 @@ jobs:
         working-directory: ./client
     steps:
       # Checks-out our repository under $GITHUB_WORKSPACE, so our job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Download models artifact
         uses: actions/download-artifact@v4
@@ -290,7 +293,7 @@ jobs:
           path: artifacts
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/macos-release/*.dmg

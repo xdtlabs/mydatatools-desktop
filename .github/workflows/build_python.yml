@@ -13,6 +13,9 @@ on:
       - '.github/workflows/build_python.yml'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -20,7 +23,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            cmake_args: '-DGGML_METAL=on -DGGML_BLAS=on -DGGML_BLAS_VENDOR=OpenBLAS'
+          - os: windows-latest
+            cmake_args: ''
+          - os: ubuntu-latest
+            cmake_args: ''
 
     steps:
     - uses: actions/checkout@v4
@@ -35,9 +44,24 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Install Build Tools (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get update -y && sudo apt-get install -y cmake ninja-build build-essential
+
+    - name: Install Build Tools (macOS)
+      if: matrix.os == 'macos-latest'
+      run: brew install cmake ninja openblas
+
+    - name: Install Build Tools (Windows)
+      if: matrix.os == 'windows-latest'
+      run: choco install cmake ninja -y
+
     - name: Install Python Dependencies
       working-directory: client/assets/python/aichat
       run: pdm install --dev
+      env:
+        FORCE_CMAKE: "1"
+        CMAKE_ARGS: ${{ matrix.cmake_args }}
 
     - name: Build with PyInstaller
       working-directory: client/assets/python/aichat
