@@ -43,6 +43,12 @@ jobs:
         working-directory: ./client
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download models artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: client/assets/python/aichat/models
       
       - uses: actions/setup-python@v5
         with:

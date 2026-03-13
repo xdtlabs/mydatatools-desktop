@@ -1,16 +1,6 @@
 name: Build Python Server
 
 on:
-  push:
-    branches: [ "main", "develop" ]
-    paths:
-      - 'client/assets/python/aichat/**'
-      - '.github/workflows/build_python.yml'
-  pull_request:
-    branches: [ "main", "develop" ]
-    paths:
-      - 'client/assets/python/aichat/**'
-      - '.github/workflows/build_python.yml'
   workflow_dispatch:
 
 env:
