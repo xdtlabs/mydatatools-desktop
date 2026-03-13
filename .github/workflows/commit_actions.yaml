@@ -36,6 +36,7 @@ jobs:
           path: client/app/models
 
   build-aichat-macos:
+    needs: [download-assets]
     runs-on: macos-latest
     defaults:
       run:
@@ -60,7 +61,7 @@ jobs:
         run: pdm install --dev
         env:
           FORCE_CMAKE: "1"
-          CMAKE_ARGS: "-DGGML_METAL=on"
+          CMAKE_ARGS: "-DGGML_METAL=on -DGGML_NATIVE=off"
           
       - name: Build Python Server
         working-directory: ./client/assets/python/aichat

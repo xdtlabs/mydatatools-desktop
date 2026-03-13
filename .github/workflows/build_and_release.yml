@@ -56,7 +56,7 @@ jobs:
           pdm run pyinstaller -y main.spec
         env:
           FORCE_CMAKE: "1"
-          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DGGML_METAL=on' || '' }}
+          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DGGML_METAL=on -DGGML_NATIVE=off' || '' }}
           HUGGING_FACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
 
       - name: Zip Python Executable (macOS/Linux)

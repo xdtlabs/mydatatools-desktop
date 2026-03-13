@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            cmake_args: '-DGGML_METAL=on'
+            cmake_args: '-DGGML_METAL=on -DGGML_NATIVE=off'
           # - os: windows-latest
           #   cmake_args: ''
           # - os: ubuntu-latest
