@@ -15,9 +15,11 @@ jobs:
     steps:
       - name: Create models directory
         run: mkdir -p client/app/models
-      - name: Download Model
+      - name: Install huggingface-cli
+        run: pip install huggingface-hub
+      - name: Download GGUF Model from Hugging Face
         run: |
-          curl -L -o client/app/models/google-gemma-3-4b-it https://gcs-file-downloader-10805446439.us-central1.run.app/download/google-gemma-3-4b-it
+          huggingface-cli download bartowski/gemma-3-4b-it-GGUF gemma-3-4b-it-Q4_K_M.gguf --local-dir client/app/models
       - name: Upload models artifact
         uses: actions/upload-artifact@v4
         with:
