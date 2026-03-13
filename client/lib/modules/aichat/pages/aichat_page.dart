@@ -31,7 +31,7 @@ class _AichatPage extends State<AichatPage> {
   final List<String> _models = ['Local LLM', 'Gemini', 'ChatGPT', 'Grok'];
   final _textController = TextEditingController();
 
-  late final GenUiManager _genUiManager;
+  late final A2uiMessageProcessor _a2uiMessageProcessor;
   late final GenUiConversation _genUiConversation;
   final List<ChatItem> _chatItems = [];
 
@@ -48,7 +48,9 @@ class _AichatPage extends State<AichatPage> {
       }
     });
 
-    _genUiManager = GenUiManager(catalog: CoreCatalogItems.asCatalog());
+    _a2uiMessageProcessor = A2uiMessageProcessor(
+      catalogs: [CoreCatalogItems.asCatalog()],
+    );
 
     final contentGenerator = LocalLlmContentGenerator(
       systemInstruction: 'You are a helpful assistant.',
@@ -79,13 +81,13 @@ class _AichatPage extends State<AichatPage> {
     });
 
     // Debug: Listen to surfaceUpdates directly
-    _genUiManager.surfaceUpdates.listen((event) {
-      //logger.d('DEBUG: GenUiManager emitted event: $event');
+    _a2uiMessageProcessor.surfaceUpdates.listen((event) {
+      //logger.d('DEBUG: A2uiMessageProcessor emitted event: $event');
     });
 
     // logger.d('Creating GenUiConversation...');
     _genUiConversation = GenUiConversation(
-      genUiManager: _genUiManager,
+      a2uiMessageProcessor: _a2uiMessageProcessor,
       contentGenerator: contentGenerator,
       onSurfaceAdded: _onSurfaceAdded,
       onSurfaceUpdated: (event) {
@@ -218,7 +220,7 @@ class _AichatPage extends State<AichatPage> {
                         decoration: BoxDecoration(
                           color:
                               isUser
-                                  ? Colors.blueAccent.withOpacity(0.9)
+                                  ? Colors.blueAccent.withValues(alpha: 0.9)
                                   : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(12.0),
                         ),
@@ -253,7 +255,7 @@ class _AichatPage extends State<AichatPage> {
                 BoxShadow(
                   offset: const Offset(0, -2),
                   blurRadius: 5,
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                 ),
               ],
             ),
@@ -265,7 +267,7 @@ class _AichatPage extends State<AichatPage> {
                   BoxShadow(
                     offset: const Offset(0, 3),
                     blurRadius: 5,
-                    color: Colors.grey.withOpacity(0.5),
+                    color: Colors.grey.withValues(alpha: 0.5),
                   ),
                 ],
               ),

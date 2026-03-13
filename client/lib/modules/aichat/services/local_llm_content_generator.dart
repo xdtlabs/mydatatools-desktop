@@ -44,6 +44,7 @@ class LocalLlmContentGenerator implements ContentGenerator {
   @override
   Future<void> sendRequest(
     ChatMessage message, {
+    A2UiClientCapabilities? clientCapabilities,
     Iterable<ChatMessage>? history,
   }) async {
     _isProcessing.value = true;
