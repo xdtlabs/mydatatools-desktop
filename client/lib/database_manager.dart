@@ -12,6 +12,7 @@ import 'package:path/path.dart' as p;
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:mydatatools/main.dart';
+import 'package:mydatatools/scanners/scanner_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:mydatatools/models/tables/album.dart';
@@ -162,7 +163,9 @@ class DatabaseManager {
   }
 
   Future<void> _startScanners() async {
-    //ScannerManager.instance.startScanners();
+    ScannerManager sm = ScannerManager(appDatabase!);
+    MainApp.scannerManager = sm;
+    sm.startScanners();
   }
 }
 

@@ -157,7 +157,7 @@ class _RxFilesPage extends State<RxFilesPage> {
                 logger.s("refresh file list");
                 ScannerManager.getInstance()
                     .getScanner(collection!)
-                    ?.start(collection!, path, true, true);
+                    ?.start(collection!, path, false, true);
               }
             },
           ),
