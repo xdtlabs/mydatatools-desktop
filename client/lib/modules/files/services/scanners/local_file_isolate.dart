@@ -107,11 +107,21 @@ class LocalFileIsolateWorker{
 
     // start scanner on first directory
     logger?.i('Scanning: $path');
+    DateTime scanStartTime = DateTime.now();
+
     var fileCount = await _scanDir(
       collectionId,
       path,
       recursive,
+      scanStartTime,
     );
+
+    dbWriterPort.send({
+      'type': 'cleanup_deleted',
+      'collectionId': collectionId,
+      'path': path,
+      'scanStartTime': scanStartTime,
+    });
 
     // return file count
     Isolate.exit(receiverPort, fileCount);
@@ -121,6 +131,7 @@ class LocalFileIsolateWorker{
     String collectionId,
     String path,
     recursive,
+    DateTime scanStartTime,
   ) async {
     int count = 0;
     AppLogger logger = AppLogger(loggerPort);
@@ -135,7 +146,7 @@ class LocalFileIsolateWorker{
         logger.s('file: ${asset.path}');
         count++;
         //save file
-        File? file = _validateFile(collectionId, asset);
+        File? file = _validateFile(collectionId, asset, scanStartTime);
         if( file != null ) {
           dbWriterPort.send({
             'type': 'file',
@@ -146,7 +157,7 @@ class LocalFileIsolateWorker{
         //send status message back
         logger.s('Scanning: ${asset.path}');
         //save directory
-        Folder? folder = _validateFolder(collectionId, asset);
+        Folder? folder = _validateFolder(collectionId, asset, scanStartTime);
         if( folder != null ) {
           dbWriterPort.send({
             'type': 'folder',
@@ -159,6 +170,7 @@ class LocalFileIsolateWorker{
                 collectionId,
                 asset.path,
                 recursive,
+                scanStartTime,
               );
               count += fileCount;
             }
@@ -181,6 +193,7 @@ class LocalFileIsolateWorker{
   Folder? _validateFolder(
     String collectionId_,
     io.Directory dir_,
+    DateTime scanStartTime,
   ) {
     //skip any hidden or system folders
     bool hidden = hiddenFolderRegex.hasMatch(dir_.path);
@@ -199,6 +212,7 @@ class LocalFileIsolateWorker{
         parent: parentPath,
         dateCreated: DateTime.now(),
         dateLastModified: DateTime.now(),
+        lastScannedDate: scanStartTime,
         collectionId: collectionId_,
     );
   }
@@ -208,6 +222,7 @@ class LocalFileIsolateWorker{
   File? _validateFile(
     String collectionId_,
     io.File file_,
+    DateTime scanStartTime,
   ) {
     //skip any fines in a hidden or system folder
     bool hidden = hiddenFolderRegex.hasMatch(file_.path);
@@ -231,6 +246,7 @@ class LocalFileIsolateWorker{
       parent: parentPath,
       dateCreated: lmDate,
       dateLastModified: lmDate,
+      lastScannedDate: scanStartTime,
       isDeleted: false,
       size: file_.lengthSync(),
       contentType: getMimeType(name),

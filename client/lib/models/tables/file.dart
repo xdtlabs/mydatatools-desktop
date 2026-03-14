@@ -17,6 +17,7 @@ class Files extends Table {
   TextColumn get parent => text()();
   DateTimeColumn get dateCreated => dateTime()();
   DateTimeColumn get dateLastModified => dateTime()();
+  DateTimeColumn get lastScannedDate => dateTime().nullable()();
   TextColumn get collectionId => text()();
   TextColumn get contentType => text()();
   IntColumn get size => integer()();
@@ -43,6 +44,8 @@ class File implements FileAsset, Insertable<File> {
   @override
   DateTime dateLastModified;
   @override
+  DateTime? lastScannedDate;
+  @override
   String collectionId;
   String contentType; //mime/type
   int size;
@@ -58,6 +61,7 @@ class File implements FileAsset, Insertable<File> {
     required this.parent,
     required this.dateCreated,
     required this.dateLastModified,
+    this.lastScannedDate,
     required this.collectionId,
     required this.contentType,
     required this.size,
@@ -74,6 +78,7 @@ class File implements FileAsset, Insertable<File> {
     required this.parent,
     required this.dateCreated,
     required this.dateLastModified,
+    this.lastScannedDate,
     required this.collectionId,
     required this.contentType,
     required this.size,
@@ -92,6 +97,7 @@ class File implements FileAsset, Insertable<File> {
       parent: Value(parent),
       dateCreated: Value(dateCreated),
       dateLastModified: Value(dateLastModified),
+      lastScannedDate: Value(lastScannedDate),
       collectionId: Value(collectionId),
       contentType: Value(contentType),
       size: Value(size),

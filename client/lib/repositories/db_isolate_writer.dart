@@ -7,6 +7,7 @@ import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/app_user.dart';
 import 'package:mydatatools/modules/files/services/file_upsert_service.dart';
 import 'package:mydatatools/modules/files/services/folder_upsert_service.dart';
+import 'package:mydatatools/modules/files/services/cleanup_deleted_files_service.dart';
 import 'package:mydatatools/repositories/user_repository.dart';
 import 'package:mydatatools/services/get_user_service.dart';
 
@@ -121,6 +122,17 @@ class DbIsolateWriterClient {
         } else if (data['type'] == 'folder') {
           await FolderUpsertService.instance.invoke(
             FolderUpsertServiceCommand(data['folder'], db),
+          );
+          replyTo?.send({'status': 'ok'});
+        } else if (data['type'] == 'cleanup_deleted') {
+          DateTime time = data['scanStartTime'];
+          await CleanupDeletedFilesService.instance.invoke(
+            CleanupDeletedFilesServiceCommand(
+              data['collectionId'] as String,
+              data['path'] as String, 
+              time,
+              db,
+            ),
           );
           replyTo?.send({'status': 'ok'});
         } else if (data['type'] == 'user') {

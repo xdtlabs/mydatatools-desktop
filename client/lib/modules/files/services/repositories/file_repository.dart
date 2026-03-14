@@ -1,6 +1,7 @@
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/file.dart';
+import 'package:drift/drift.dart' as drift;
 
 class FileDesktopRepository {
   AppLogger logger = AppLogger(null);
@@ -47,5 +48,19 @@ class FileDesktopRepository {
   Future<File?> delete(File f) async {
     await db.delete(db.files).delete(f);
     return Future(() => null);
+  }
+
+  Future<void> markMissingAsDeleted(String collectionId, String scannedPath, DateTime scanStartTime) async {
+    String searchPath = scannedPath;
+    if (!searchPath.endsWith('/')) {
+      searchPath += '/';
+    }
+    
+    await (db.update(db.files)
+          ..where((t) =>
+              t.collectionId.equals(collectionId) &
+              (t.parent.equals(scannedPath) | t.parent.like('$searchPath%')) &
+              (t.lastScannedDate.isNull() | t.lastScannedDate.isSmallerThanValue(scanStartTime))))
+        .write(const FilesCompanion(isDeleted: drift.Value(true)));
   }
 }

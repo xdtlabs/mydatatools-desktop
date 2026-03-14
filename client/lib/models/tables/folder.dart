@@ -15,6 +15,7 @@ class Folders extends Table {
   TextColumn get parent => text()();
   DateTimeColumn get dateCreated => dateTime()();
   DateTimeColumn get dateLastModified => dateTime()();
+  DateTimeColumn get lastScannedDate => dateTime().nullable()();
   TextColumn get collectionId => text()();
 
   @override
@@ -35,6 +36,8 @@ class Folder implements FileAsset, Insertable<Folder> {
   @override
   DateTime dateLastModified;
   @override
+  DateTime? lastScannedDate;
+  @override
   String collectionId;
 
   Folder({
@@ -44,6 +47,7 @@ class Folder implements FileAsset, Insertable<Folder> {
     required this.parent,
     required this.dateCreated,
     required this.dateLastModified,
+    this.lastScannedDate,
     required this.collectionId,
   });
 
@@ -54,6 +58,7 @@ class Folder implements FileAsset, Insertable<Folder> {
     required this.parent,
     required this.dateCreated,
     required this.dateLastModified,
+    this.lastScannedDate,
     required this.collectionId,
   });
 
@@ -66,6 +71,7 @@ class Folder implements FileAsset, Insertable<Folder> {
       parent: Value(parent),
       dateCreated: Value(dateCreated),
       dateLastModified: Value(dateLastModified),
+      lastScannedDate: Value(lastScannedDate),
       collectionId: Value(collectionId),
     ).toColumns(nullToAbsent);
   }

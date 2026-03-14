@@ -1,6 +1,7 @@
 import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/folder.dart';
+import 'package:drift/drift.dart' as drift;
 
 class FolderDesktopRepository {
   AppLogger logger = AppLogger(null);
@@ -47,5 +48,19 @@ class FolderDesktopRepository {
   Future<Folder?> delete(Folder f) async {
     await db.delete(db.folders).delete(f);
     return Future(() => null);
+  }
+
+  Future<void> deleteMissing(String collectionId, String scannedPath, DateTime scanStartTime) async {
+    String searchPath = scannedPath;
+    if (!searchPath.endsWith('/')) {
+      searchPath += '/';
+    }
+
+    await (db.delete(db.folders)
+          ..where((t) =>
+              t.collectionId.equals(collectionId) &
+              (t.parent.equals(scannedPath) | t.parent.like('$searchPath%')) &
+              (t.lastScannedDate.isNull() | t.lastScannedDate.isSmallerThanValue(scanStartTime))))
+        .go();
   }
 }
