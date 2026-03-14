@@ -27,7 +27,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Must add this line.
   await windowManager.ensureInitialized();
-  
+
   // Intercept close events to manually shutdown python service before exit
   await windowManager.setPreventClose(true);
 
@@ -67,7 +67,8 @@ class MainApp extends StatefulWidget {
 }
 
 // In your top-level app widget (MainApp State) call stop when the app is disposed:
-class MainAppState extends State<MainApp> with WidgetsBindingObserver, WindowListener {
+class MainAppState extends State<MainApp>
+    with WidgetsBindingObserver, WindowListener {
   bool _needsSetup = false;
   bool _isSetupComplete = false;
   PythonManager? pythonManager;
@@ -225,7 +226,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver, WindowLis
   Widget _initSplashScreen() {
     // Show splash screen
     () async {
-      await windowManager.setSize(const Size(800, 600));
+      await windowManager.setSize(const Size(850, 600));
       await windowManager.center();
       await windowManager.setTitle('MyData Tools - Loading...');
     }();

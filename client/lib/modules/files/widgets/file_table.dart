@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 import 'dart:convert';
 import 'dart:io' as io;
+import 'dart:math';
 
 import 'package:mydatatools/models/tables/file.dart';
 import 'package:mydatatools/models/tables/file_asset.dart';
@@ -29,7 +30,7 @@ class _FileTable extends State<FileTable> {
 
   @override
   Widget build(BuildContext context) {
-    //final theme = Theme.of(context);
+    final theme = Theme.of(context);
 
     List<DataColumn> columns = getColumns(context);
     List<DataRow> rows = getRows(context, widget.data);
@@ -46,6 +47,17 @@ class _FileTable extends State<FileTable> {
             sortColumnIndex: sortColumnIndex,
             sortAscending: sortAsc,
             showCheckboxColumn: true,
+            dataTextStyle: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w200,
+              fontSize: 15,
+              color: Colors.black87,
+            ),
+            headingTextStyle: theme.textTheme.titleSmall?.copyWith(
+              fontWeight:
+                  FontWeight.w200, // Keep headers slightly bolder than data
+              fontSize: 15,
+              color: Colors.black87,
+            ),
           ),
         ),
       ),
@@ -148,7 +160,9 @@ class _FileTable extends State<FileTable> {
                           ? Icon(getIconForMimeType(f.contentType))
                           : getImageComponent(isImage, f),
                       const SizedBox(width: 8),
-                      Text(f.name, overflow: TextOverflow.ellipsis),
+                      Expanded(
+                        child: Text(f.name, overflow: TextOverflow.ellipsis),
+                      ),
                     ],
                   ),
                 ),
@@ -170,15 +184,19 @@ class _FileTable extends State<FileTable> {
               DataCell(
                 ConstrainedBox(
                   constraints: const BoxConstraints(
-                    maxWidth: 100,
+                    maxWidth: 150,
                   ), //SET max width
-                  child: Text('${f.size}kb', overflow: TextOverflow.clip),
+                  child: Text(
+                    _formatBytes(f.size),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
               ),
               DataCell(
                 ConstrainedBox(
                   constraints: const BoxConstraints(
-                    maxWidth: 150,
+                    maxWidth: 250,
                   ), //SET max width
                   child: Tooltip(
                     message: f.dateCreated.toLocal().toString(),
@@ -187,7 +205,8 @@ class _FileTable extends State<FileTable> {
                         form: Abbreviation.full,
                         includeWeeks: true,
                       ),
-                      overflow: TextOverflow.clip,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                 ),
@@ -247,7 +266,9 @@ class _FileTable extends State<FileTable> {
                     children: [
                       const Icon(Icons.folder),
                       const SizedBox(width: 8),
-                      Text(f.name, overflow: TextOverflow.ellipsis),
+                      Expanded(
+                        child: Text(f.name, overflow: TextOverflow.ellipsis),
+                      ),
                     ],
                   ),
                 ),
@@ -323,5 +344,12 @@ class _FileTable extends State<FileTable> {
       default:
         return Icons.file_present;
     }
+  }
+
+  String _formatBytes(num bytes) {
+    if (bytes <= 0) return "0 B";
+    const suffixes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    var i = (log(bytes) / log(1024)).floor();
+    return ((bytes / pow(1024, i)).toStringAsFixed(1)).replaceAll(RegExp(r'\.0$'), '') + ' ' + suffixes[i];
   }
 }

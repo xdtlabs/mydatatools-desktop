@@ -294,7 +294,6 @@ class _AichatPage extends State<AichatPage> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            color: Colors.white,
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
