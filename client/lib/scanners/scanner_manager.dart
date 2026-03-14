@@ -34,9 +34,13 @@ class ScannerManager {
   }
 
   void startScanners() async {
+    // Delay scanner startup to let the app UI finish initializing and prevent startup lockups
+    await Future.delayed(const Duration(seconds: 5));
+
     //start scanner for all existing collections
     var collections = await database.select(database.collections).get();
     for (var c in collections) {
+      await Future.delayed(const Duration(seconds: 5));
       logger.d('${c.id} | ${c.path}');
       _registerSingleScanner(c);
     }

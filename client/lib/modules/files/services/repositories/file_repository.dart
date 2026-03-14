@@ -12,7 +12,7 @@ class FileDesktopRepository {
   Future<File?> getByPath(File f) async {
     File? file =
         await (db.select(db.files)
-          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
+          ..where((t) => t.id.equals(f.id))).getSingleOrNull();
 
     return Future(() => file);
   }
@@ -30,7 +30,7 @@ class FileDesktopRepository {
     //grab latest
     File? file =
         await (db.select(db.files)
-          ..where((t) => t.path.equals(f.path))).getSingle();
+          ..where((t) => t.id.equals(f.id))).getSingleOrNull();
 
     return Future(() => file);
   }
@@ -40,7 +40,7 @@ class FileDesktopRepository {
     //grab latest
     File? file =
         await (db.select(db.files)
-          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
+          ..where((t) => t.id.equals(f.id))).getSingleOrNull();
 
     return file;
   }

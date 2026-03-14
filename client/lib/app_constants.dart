@@ -5,7 +5,7 @@ class AppConstants {
   static const String dbName = "mydata.db"; //sqlite
 
   //DB Constants
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
   static const bool shouldDeleteIfMigrationNeeded = true;
 
   /// Secure Storage Keys

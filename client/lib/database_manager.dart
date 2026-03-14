@@ -186,7 +186,7 @@ class AppDatabase extends _$AppDatabase {
   String? name;
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -199,7 +199,9 @@ class AppDatabase extends _$AppDatabase {
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
-          print("Upgrade to v2");
+          print("Upgrade to v2: Adding last_scanned_date to Files and Folders");
+          await m.addColumn(files, files.lastScannedDate);
+          await m.addColumn(folders, folders.lastScannedDate);
         }
         if (from < 3) {
           print("Upgrade tables to v3");
@@ -322,14 +324,14 @@ LazyDatabase _openConnection(String? path, String? name, bool useMemoryDb) {
     if (!useMemoryDb) {
       return NativeDatabase(
         file,
-        logStatements: true,
+        logStatements: false,
         cachePreparedStatements: true,
         setup: null,
       );
       //return NativeDatabase.createInBackground(file, logStatements: true, cachePreparedStatements: true, setup: null);
     } else {
       return NativeDatabase.memory(
-        logStatements: true,
+        logStatements: false,
         setup: null,
         cachePreparedStatements: false,
       );

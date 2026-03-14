@@ -12,7 +12,7 @@ class FolderDesktopRepository {
   Future<Folder?> getByPath(Folder f) async {
     Folder? folder =
         await (db.select(db.folders)
-          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
+          ..where((t) => t.id.equals(f.id))).getSingleOrNull();
 
     return Future(() => folder);
   }
@@ -30,7 +30,7 @@ class FolderDesktopRepository {
     //grab latest
     Folder? folder =
         await (db.select(db.folders)
-          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
+          ..where((t) => t.id.equals(f.id))).getSingleOrNull();
 
     return Future(() => folder);
   }
@@ -40,7 +40,7 @@ class FolderDesktopRepository {
     //grab latest
     Folder? folder =
         await (db.select(db.folders)
-          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
+          ..where((t) => t.id.equals(f.id))).getSingleOrNull();
 
     return Future(() => folder);
   }
