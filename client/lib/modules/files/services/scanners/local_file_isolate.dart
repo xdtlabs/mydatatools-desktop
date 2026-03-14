@@ -8,6 +8,7 @@ import 'package:mydatatools/models/tables/folder.dart';
 import 'package:mydatatools/modules/files/files_constants.dart';
 import 'package:flutter/services.dart';
 import 'package:mydatatools/scanners/collection_scanner.dart';
+import 'package:path/path.dart' as p;
 
 
 class LocalFileIsolate implements CollectionScanner {
@@ -74,6 +75,21 @@ class LocalFileIsolateWorker{
   SendPort? loggerPort;
   AppLogger? logger;
 
+  final hiddenFolderRegex = RegExp(
+    r'/[.].*/?',
+    multiLine: false,
+    caseSensitive: true,
+    unicode: true,
+  );
+
+  // TODO: add this list to a global config / UI page
+  final skipFolderRegex = RegExp(
+    r'/(go|node_modules|Pods|\.git)+/?',
+    multiLine: false,
+    caseSensitive: true,
+    unicode: true,
+  );
+
   //constructor
   LocalFileIsolateWorker(this.token, this.receiverPort, this.dbWriterPort, this.loggerPort){
     // Ensure the background binary messenger is initialized so plugins/platform channels work
@@ -119,7 +135,7 @@ class LocalFileIsolateWorker{
         logger.s('file: ${asset.path}');
         count++;
         //save file
-        File? file = _validateFile({}, collectionId, asset);
+        File? file = _validateFile(collectionId, asset);
         if( file != null ) {
           dbWriterPort.send({
             'type': 'file',
@@ -130,25 +146,25 @@ class LocalFileIsolateWorker{
         //send status message back
         logger.s('Scanning: ${asset.path}');
         //save directory
-        Folder? folder = _validateFolder({}, collectionId, asset);
+        Folder? folder = _validateFolder(collectionId, asset);
         if( folder != null ) {
           dbWriterPort.send({
             'type': 'folder',
             'folder': folder
           });
-        }
 
-        try {
-          if (recursive) {
-            int fileCount = await _scanDir(
-              collectionId,
-              asset.path,
-              recursive,
-            );
-            count += fileCount;
+          try {
+            if (recursive) {
+              int fileCount = await _scanDir(
+                collectionId,
+                asset.path,
+                recursive,
+              );
+              count += fileCount;
+            }
+          } catch (err) {
+            logger.w(err);
           }
-        } catch (err) {
-          logger.w(err);
         }
       } else {
         logger.w("unknown type");
@@ -250,25 +266,9 @@ class LocalFileIsolateWorker{
   /// Validate directories against the know paths we want to skip.
   /// Convert dart.io to a local model object
   Folder? _validateFolder(
-    Map<String, DateTime> existingFolders_,
     String collectionId_,
     io.Directory dir_,
   ) {
-    final hiddenFolderRegex = RegExp(
-      '/[.].*/?',
-      multiLine: false,
-      caseSensitive: true,
-      unicode: true,
-    );
-
-    // TODO: add this list to a global config / UI page
-    final skipFolderRegex = RegExp(
-      '/(go|node_modules|Pods|.git)+/?',
-      multiLine: false,
-      caseSensitive: true,
-      unicode: true,
-    );
-
     //skip any hidden or system folders
     bool hidden = hiddenFolderRegex.hasMatch(dir_.path);
     bool skipFolder = skipFolderRegex.hasMatch(dir_.path);
@@ -276,50 +276,26 @@ class LocalFileIsolateWorker{
       return null;
     }
 
+    String name = p.basename(dir_.path);
+    String parentPath = p.dirname(dir_.path);
 
-    if (existingFolders_["$collectionId_:${dir_.path}"] == null) {
-      String name = dir_.path.split("/").last;
-      String parentPath = dir_.path
-          .split("/")
-          .sublist(0, dir_.path.split("/").length - 1)
-          .join("/");
-
-      return Folder(
-          id: '$collectionId_:${dir_.path.hashCode}',
-          name: name,
-          path: dir_.path,
-          parent: parentPath,
-          dateCreated: DateTime.now(),
-          dateLastModified: DateTime.now(),
-          collectionId: collectionId_,
-      );
-    }
-
-    return null;
+    return Folder(
+        id: '$collectionId_:${dir_.path.hashCode}',
+        name: name,
+        path: dir_.path,
+        parent: parentPath,
+        dateCreated: DateTime.now(),
+        dateLastModified: DateTime.now(),
+        collectionId: collectionId_,
+    );
   }
 
   /// Validate directories against the know paths we want to skip.
   /// Convert dart.io to a local model object
   File? _validateFile(
-    Map<String, DateTime> existingFiles_,
     String collectionId_,
     io.File file_,
   ) {
-    final hiddenFolderRegex = RegExp(
-      '/[.].*/?',
-      multiLine: false,
-      caseSensitive: true,
-      unicode: true,
-    );
-
-    // TODO: add this list to a global config / UI page
-    final skipFolderRegex = RegExp(
-      '/(go|node_modules|Pods|.git)+/?',
-      multiLine: false,
-      caseSensitive: true,
-      unicode: true,
-    );
-
     //skip any fines in a hidden or system folder
     bool hidden = hiddenFolderRegex.hasMatch(file_.path);
     bool skipFolder = skipFolderRegex.hasMatch(file_.path);
@@ -331,28 +307,21 @@ class LocalFileIsolateWorker{
     //Check if it exists, skip it if it does
     DateTime lmDate = file_.lastModifiedSync();
     //todo: add date check to if statement
-    if (existingFiles_["$collectionId_:${file_.path}"] == null) {
-      String name = file_.path.split("/").last;
-      String parentPath = file_.path
-          .split("/")
-          .sublist(0, file_.path.split("/").length - 1)
-          .join("/");
+    String name = p.basename(file_.path);
+    String parentPath = p.dirname(file_.path);
 
-      return File(
-        id: '$collectionId_:${file_.path.hashCode}',
-        collectionId: collectionId_,
-        name: name,
-        path: file_.path,
-        parent: parentPath,
-        dateCreated: lmDate,
-        dateLastModified: lmDate,
-        isDeleted: false,
-        size: file_.lengthSync(),
-        contentType: getMimeType(name),
-      );
-    }
-
-    return null;
+    return File(
+      id: '$collectionId_:${file_.path.hashCode}',
+      collectionId: collectionId_,
+      name: name,
+      path: file_.path,
+      parent: parentPath,
+      dateCreated: lmDate,
+      dateLastModified: lmDate,
+      isDeleted: false,
+      size: file_.lengthSync(),
+      contentType: getMimeType(name),
+    );
   }
 
   String getMimeType(String name) {
