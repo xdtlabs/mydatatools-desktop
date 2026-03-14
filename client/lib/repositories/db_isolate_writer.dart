@@ -8,6 +8,8 @@ import 'package:mydatatools/models/tables/app_user.dart';
 import 'package:mydatatools/modules/files/services/file_upsert_service.dart';
 import 'package:mydatatools/modules/files/services/folder_upsert_service.dart';
 import 'package:mydatatools/modules/files/services/cleanup_deleted_files_service.dart';
+import 'package:mydatatools/modules/files/services/batch_file_upsert_service.dart';
+import 'package:mydatatools/models/tables/file.dart';
 import 'package:mydatatools/repositories/user_repository.dart';
 import 'package:mydatatools/services/get_user_service.dart';
 
@@ -108,8 +110,8 @@ class DbIsolateWriterClient {
     // create the AppDatabase inside the isolate
     AppDatabase db = AppDatabase(null, path, name, useMemoryDb);
 
-    port.listen((data) async {
-      if (data is! Map) return;
+    await for (final data in port) {
+      if (data is! Map) continue;
 
       SendPort? replyTo = data['replyTo'] as SendPort?;
 
@@ -117,6 +119,12 @@ class DbIsolateWriterClient {
         if (data['type'] == 'file') {
           await FileUpsertService.instance.invoke(
             FileUpsertServiceCommand(data['file'], db),
+          );
+          replyTo?.send({'status': 'ok'});
+        } else if (data['type'] == 'batch_file') {
+          List<File> filesToUpsert = (data['files'] as List).cast<File>();
+          await BatchFileUpsertService.instance.invoke(
+            BatchFileUpsertServiceCommand(filesToUpsert, db),
           );
           replyTo?.send({'status': 'ok'});
         } else if (data['type'] == 'folder') {
@@ -148,6 +156,6 @@ class DbIsolateWriterClient {
         print("Error in DbIsolateWriter: $e");
         replyTo?.send({'error': e.toString()});
       }
-    });
+    }
   }
 }

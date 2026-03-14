@@ -114,14 +114,11 @@ class _RxFilesPage extends State<RxFilesPage> {
         title: getBreadcrumb(collection!, path ?? collection!.path),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            height: 1.0,
-            color: Colors.grey.shade300,
-          ),
+          child: Container(height: 1.0, color: Colors.grey.shade300),
         ),
         actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.add, color: Colors.black),
+            icon: const Icon(Icons.add, color: Colors.black, weight: 200),
             tooltip: 'Upload file',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +130,7 @@ class _RxFilesPage extends State<RxFilesPage> {
           ),
           IconButton(
             // TODO: disable is no files are checked
-            icon: const Icon(Icons.download, color: Colors.black),
+            icon: const Icon(Icons.download, color: Colors.black, weight: 200),
             tooltip: 'Download File(s)',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -147,7 +144,7 @@ class _RxFilesPage extends State<RxFilesPage> {
           ),
           IconButton(
             // TODO: disable is no files are checked
-            icon: const Icon(Icons.refresh, color: Colors.black),
+            icon: const Icon(Icons.refresh, color: Colors.black, weight: 100),
             tooltip: 'Refresh',
             onPressed: () {
               //reset date
@@ -162,8 +159,8 @@ class _RxFilesPage extends State<RxFilesPage> {
             },
           ),
           IconButton(
-            // TODO: disable is no files are checked
-            icon: const Icon(Icons.delete, color: Colors.black),
+            // TODO: disable if no files are checked
+            icon: const Icon(Icons.delete, color: Colors.black, weight: 300),
             tooltip: 'Delete File(s)',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(

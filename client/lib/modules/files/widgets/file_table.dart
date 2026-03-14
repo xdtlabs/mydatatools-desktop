@@ -108,7 +108,9 @@ class _FileTable extends State<FileTable> {
         label: const Expanded(
           flex: 1,
           child: Text(
-            'Date Created',
+            'Date\nCreated',
+            maxLines: 2,
+            softWrap: true,
             style: TextStyle(fontWeight: FontWeight.normal),
           ),
         ),

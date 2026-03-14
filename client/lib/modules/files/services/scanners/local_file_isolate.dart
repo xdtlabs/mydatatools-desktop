@@ -132,8 +132,10 @@ class LocalFileIsolateWorker{
     String path,
     recursive,
     DateTime scanStartTime,
+    [List<File>? currentBatch]
   ) async {
     int count = 0;
+    List<File> fileBatch = currentBatch ?? [];
     AppLogger logger = AppLogger(loggerPort);
 
     var dir = io.Directory(path);
@@ -143,15 +145,18 @@ class LocalFileIsolateWorker{
 
     for (var asset in dirList) {
       if (asset is io.File) {
-        logger.s('file: ${asset.path}');
         count++;
         //save file
         File? file = _validateFile(collectionId, asset, scanStartTime);
         if( file != null ) {
-          dbWriterPort.send({
-            'type': 'file',
-            'file': file
-          });
+          fileBatch.add(file);
+          if (fileBatch.length >= 100) {
+            dbWriterPort.send({
+              'type': 'batch_file',
+              'files': List.from(fileBatch)
+            });
+            fileBatch.clear();
+          }
         }
       } else if (asset is io.Directory) {
         //send status message back
@@ -171,6 +176,7 @@ class LocalFileIsolateWorker{
                 asset.path,
                 recursive,
                 scanStartTime,
+                fileBatch,
               );
               count += fileCount;
             }
@@ -181,6 +187,14 @@ class LocalFileIsolateWorker{
       } else {
         logger.w("unknown type");
       }
+    }
+
+    if (currentBatch == null && fileBatch.isNotEmpty) {
+      dbWriterPort.send({
+        'type': 'batch_file',
+        'files': List.from(fileBatch)
+      });
+      fileBatch.clear();
     }
 
     return Future(() => count);

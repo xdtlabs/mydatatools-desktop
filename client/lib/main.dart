@@ -226,7 +226,7 @@ class MainAppState extends State<MainApp>
   Widget _initSplashScreen() {
     // Show splash screen
     () async {
-      await windowManager.setSize(const Size(850, 600));
+      await windowManager.setSize(const Size(900, 700));
       await windowManager.center();
       await windowManager.setTitle('MyData Tools - Loading...');
     }();
