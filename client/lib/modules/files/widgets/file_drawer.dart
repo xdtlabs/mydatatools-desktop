@@ -64,20 +64,34 @@ class _FileDrawer extends State<FileDrawer> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           floatingActionButton: FloatingActionButton(
-            tooltip: "Add File Collection",
-            child: const Icon(Icons.add),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(color: Colors.grey, width: 1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            tooltip: "Add Source",
             onPressed: () {
               GoRouter.of(context).go("/files/add");
             },
+            child: const Icon(Icons.add, color: Colors.grey),
           ),
           body: Column(
             children: [
               const SizedBox(height: 8),
-              const Align(
-                alignment: Alignment.topLeft,
-                child: Text(
-                  "Files:",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Text(
+                    "SOURCES",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: Colors.grey,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
                 ),
               ),
               SizedBox(
