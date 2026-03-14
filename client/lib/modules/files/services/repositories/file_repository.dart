@@ -4,58 +4,48 @@ import 'package:mydatatools/models/tables/file.dart';
 
 class FileDesktopRepository {
   AppLogger logger = AppLogger(null);
+  AppDatabase db;
 
-  FileDesktopRepository();
+  FileDesktopRepository(this.db);
 
   Future<File?> getByPath(File f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
     File? file =
-        await (db?.select(db.files)
-          ?..where((t) => t.path.equals(f.path)))?.getSingleOrNull();
+        await (db.select(db.files)
+          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
 
     return Future(() => file);
   }
 
   Future<List<File>> getByParentPath(String path) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
     List<File> files =
-        await (db?.select(db.files)
-          ?..where((t) => t.parent.equals(path)))?.get() ??
-        [];
+        await (db.select(db.files)
+          ..where((t) => t.parent.equals(path))).get();
 
     return Future(() => files);
   }
 
   Future<File?> create(File f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
-    await db?.into(db.files).insert(f);
+    await db.into(db.files).insert(f);
     //grab latest
     File? file =
-        await (db?.select(db.files)
-          ?..where((t) => t.path.equals(f.path)))?.getSingle();
+        await (db.select(db.files)
+          ..where((t) => t.path.equals(f.path))).getSingle();
 
     return Future(() => file);
   }
 
   Future<File?> update(File f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
-    await db?.update(db.files).replace(f);
+    await db.update(db.files).replace(f);
     //grab latest
     File? file =
-        await (db?.select(db.files)
-          ?..where((t) => t.path.equals(f.path)))?.getSingleOrNull();
+        await (db.select(db.files)
+          ..where((t) => t.path.equals(f.path))).getSingleOrNull();
 
     return file;
   }
 
   Future<File?> delete(File f) async {
-    AppDatabase? db = DatabaseManager.instance.database;
-
-    await db?.delete(db.files).delete(f);
+    await db.delete(db.files).delete(f);
     return Future(() => null);
   }
 }

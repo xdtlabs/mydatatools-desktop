@@ -3,6 +3,7 @@ import 'package:mydatatools/models/tables/collection.dart';
 import 'package:mydatatools/models/tables/file_asset.dart';
 import 'package:mydatatools/modules/files/services/repositories/file_repository.dart';
 import 'package:mydatatools/modules/files/services/repositories/folder_repository.dart';
+import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/services/rx_service.dart';
 
 class GetFileAndFoldersService
@@ -16,8 +17,9 @@ class GetFileAndFoldersService
     GetFileAndFoldersServiceCommand command,
   ) async {
     isLoading.add(true);
-    FileDesktopRepository fileRepo = FileDesktopRepository();
-    FolderDesktopRepository folderRepo = FolderDesktopRepository();
+    AppDatabase? db = DatabaseManager.instance.database;
+    FileDesktopRepository fileRepo = FileDesktopRepository(db!);
+    FolderDesktopRepository folderRepo = FolderDesktopRepository(db);
 
     // TODO: first refresh files & folders under path
     //ScannerManager.getInstance().getScanner(command.collection).
