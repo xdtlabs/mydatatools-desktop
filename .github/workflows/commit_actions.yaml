@@ -4,7 +4,7 @@ run-name: ${{ github.actor }} is building and releasing (to github) the mac,wind
 
 on:
   push:
-    branches: [ "main", "develop", "feature/cicd" ]
+    branches: [ "feature/cicd" ] #"main", "develop", 
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
