@@ -1,26 +1,47 @@
+# MyDataTools Desktop - Development Guidelines (AI Context)
+
+This file provides critical context for AI assistants to maintain the architectural integrity and development standards of the MyDataTools Desktop project.
+
+## 1. Project Goal
+"Share It - Save It" (Smart Bucket): A desktop application that acts as a central hub for saved content from various sources, using Multimodal AI (Gemini) for analysis and organization.
+
 ---
-trigger: always_on
+
+## 2. Architectural Patterns
+
+### Single-Writer Isolate Pattern (CRITICAL)
+- **Database**: Drift (SQLite).
+- **Writes**: ALL write operations (inserts, updates, deletes) MUST be dispatched to the `DbIsolateWriter` via its `writerPort`.
+- **Reads**: Perform reads on the main thread via `AppDatabase` or `DatabaseRepository`.
+- **Reason**: Prevents database locking on the UI thread and ensures thread safety during heavy data ingestion (scanning).
+
+### Modular MVVM
+- Feature code belongs in `lib/modules/[feature_name]`.
+- Keep business logic in `services/` and UI in `pages/` or `widgets/`.
+- Avoid leaking module-specific logic into the global `lib/` directory.
+
 ---
 
-# PROJECT SPECIFICATION: "Civic Voice"
+## 3. Directory Structure & Conventions
 
-## WHY: Project Purpose & Intent
-Community engagement app to view, edit, comment, and vote on congressional bills. Aims to make legislation interactive and accessible bridging the gap between citizens and the legislative process.
+### `lib/modules/`
+- **aichat**: Local and remote LLM interactions.
+- **files**: Local filesystem management and scanning.
+- **photos**: Image-specific workflows.
+- **email**: Integration with email providers.
 
-## WHAT: Tech Stack & Architecture
-- **Frontend**: Next.js (Latest Stable), TypeScript, Tailwind CSS, Shadcn UI
-- **Backend/DB**: Firebase, Firebase DataConnect (PostGIS)
-- **Auth**: Firebase Auth (Anonymous allowed for view, auth required for voting/comments)
-- **AI/ML**: Firebase AI/Genkit with Google Gemini. (Use `gemini-3-flash-preview`; `gemini-1.5-flash` is deprecated)
+### `lib/scanners/`
+- New scanners should implement the `CollectionScanner` interface.
+- Heavy scanning logic (filesystem traversal, network requests) MUST be offloaded to a background `Isolate`.
 
-### Core Features & Data Flow
-- **Ingestion Pipeline**: Bill summary data is loaded from Congress.gov API. XML versions of bills (and rendered XML) are downloaded and cached in Cloud Storage.
-- **Frontend Experience**: Users navigate the Home Page and Bill Detail pages to interact with structured legislation data.
-- **Styling**: Use the '8-point grid system' for all spacing, sizing, and alignment.
+### `lib/repositories/`
+- Centralized data access. Use these as abstraction layers over the database.
 
-## HOW: Development & Verification
-- **Testing**: Always write unit tests for testable code changes. When fixing bugs, write a failing unit test first, then ensure it passes after the fix. Optimize for running single tests for future debugging.
-- **Data Connect Usage**: Use Firebase Data Connect for all database operations. Put all database mutations in the generated SDK, never embedded directly in code.
-- **Library Validation**: Use the `context7` MCP server to validate code against the latest library documentation.
-- **GIT**: When using git, DO NOT commit code. I will commit the code after reviewing the changes.
+---
+
+## 4. Development Rules
+- **Testing**: Always write unit tests for core services and repository logic.
+- **Logging**: Use `AppLogger` for all application logging.
+- **State Management**: Usually we can pass properties down the widget tree and Events back up.  When we need global state, use `Provider` as appropriate for the module.
+- **Python Services**: Managed via `PythonManager`. Native bundling logic is sensitive; coordinate with `Makefile` for build-time dependencies.
 
