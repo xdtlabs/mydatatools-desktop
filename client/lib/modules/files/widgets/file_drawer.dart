@@ -126,56 +126,70 @@ class _FileDrawer extends State<FileDrawer> {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: filesC.length,
                   itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(filesC[index].name),
-                      trailing: PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (String value) {
-                          if (value == 'sync') {
-                            ScannerManager.getInstance()
-                                .getScanner(filesC[index])
-                                ?.start(
-                                  filesC[index],
-                                  filesC[index].path,
-                                  true,
-                                  true,
-                                );
-                          } else if (value == 'settings') {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Settings coming soon'),
-                              ),
-                            );
-                          } else if (value == 'delete') {
-                            _showDeleteConfirmationDialog(
-                              context,
-                              filesC[index],
-                            );
-                          }
+                    final isSelected = collection?.id == filesC[index].id;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: ListTile(
+                        selected: isSelected,
+                        selectedTileColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        title: Text(
+                          filesC[index].name,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert),
+                          onSelected: (String value) {
+                            if (value == 'sync') {
+                              ScannerManager.getInstance()
+                                  .getScanner(filesC[index])
+                                  ?.start(
+                                    filesC[index],
+                                    filesC[index].path,
+                                    true,
+                                    true,
+                                  );
+                            } else if (value == 'settings') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Settings coming soon'),
+                                ),
+                              );
+                            } else if (value == 'delete') {
+                              _showDeleteConfirmationDialog(
+                                context,
+                                filesC[index],
+                              );
+                            }
+                          },
+                          itemBuilder:
+                              (BuildContext context) => <PopupMenuEntry<String>>[
+                                const PopupMenuItem<String>(
+                                  value: 'sync',
+                                  child: Text('Sync'),
+                                ),
+                                const PopupMenuItem<String>(
+                                  value: 'settings',
+                                  enabled: false,
+                                  child: Text('Settings'),
+                                ),
+                                const PopupMenuItem<String>(
+                                  value: 'delete',
+                                  child: Text('Delete'),
+                                ),
+                              ],
+                        ),
+                        onTap: () {
+                          //update before redirection
+                          RxFilesPage.selectedCollection.add(filesC[index]);
+                          RxFilesPage.selectedPath.add(filesC[index].path);
+                          GoRouter.of(context).go('/files');
                         },
-                        itemBuilder:
-                            (BuildContext context) => <PopupMenuEntry<String>>[
-                              const PopupMenuItem<String>(
-                                value: 'sync',
-                                child: Text('Sync'),
-                              ),
-                              const PopupMenuItem<String>(
-                                value: 'settings',
-                                enabled: false,
-                                child: Text('Settings'),
-                              ),
-                              const PopupMenuItem<String>(
-                                value: 'delete',
-                                child: Text('Delete'),
-                              ),
-                            ],
                       ),
-                      onTap: () {
-                        //update before redirection
-                        RxFilesPage.selectedCollection.add(filesC[index]);
-                        RxFilesPage.selectedPath.add(filesC[index].path);
-                        GoRouter.of(context).go('/files');
-                      },
                     );
                   },
                 ),

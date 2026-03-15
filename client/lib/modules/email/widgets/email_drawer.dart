@@ -17,7 +17,9 @@ class _EmailDrawer extends State<EmailDrawer> {
   final GetCollectionsService _collectionsService =
       GetCollectionsService.instance;
   StreamSubscription<List<Collection>>? _collectionsServiceSub;
+  StreamSubscription? _selectedCollectionSub;
   List<Collection> collections = [];
+  Collection? collection;
 
   @override
   void initState() {
@@ -26,12 +28,22 @@ class _EmailDrawer extends State<EmailDrawer> {
         collections = value;
       });
     });
+
+    _selectedCollectionSub = EmailPage.selectedCollection.listen((value) {
+      if (mounted) {
+        setState(() {
+          collection = value;
+        });
+      }
+    });
+
     super.initState();
   }
 
   @override
   void dispose() {
     _collectionsServiceSub?.cancel();
+    _selectedCollectionSub?.cancel();
     super.dispose();
   }
 
@@ -68,14 +80,26 @@ class _EmailDrawer extends State<EmailDrawer> {
                 child: ListView.builder(
                   itemCount: collections.length,
                   itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(collections[index].name),
-                      onTap: () {
-                        EmailPage.selectedCollection.add(collections[index]);
-                        context.go('/email');
-
-                        ///${collections[index].id}
-                      },
+                    final isSelected = collection?.id == collections[index].id;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: ListTile(
+                        selected: isSelected,
+                        selectedTileColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        title: Text(
+                          collections[index].name,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        onTap: () {
+                          EmailPage.selectedCollection.add(collections[index]);
+                          context.go('/email');
+                        },
+                      ),
                     );
                   },
                 ),
