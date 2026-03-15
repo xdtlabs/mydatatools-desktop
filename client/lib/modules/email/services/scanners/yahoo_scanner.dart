@@ -42,7 +42,7 @@ class YahooScanner extends CollectionScanner {
     if (minDate != null) {
       minQuery = "before:${minDate.millisecondsSinceEpoch}";
     }
-    print(minQuery);
+    logger.d(minQuery);
 
     return Future(() => -1);
   }

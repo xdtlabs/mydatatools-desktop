@@ -20,7 +20,7 @@ class FileDesktopRepository {
   Future<List<File>> getByParentPath(String path) async {
     List<File> files =
         await (db.select(db.files)
-          ..where((t) => t.parent.equals(path))).get();
+          ..where((t) => t.parent.equals(path) & t.isDeleted.equals(false))).get();
 
     return Future(() => files);
   }
@@ -50,7 +50,7 @@ class FileDesktopRepository {
     return Future(() => null);
   }
 
-  Future<void> markMissingAsDeleted(String collectionId, String scannedPath, DateTime scanStartTime) async {
+  Future<void> markMissingAsDeleted(String collectionId, String scannedPath, DateTime scanStartTime, {bool recursive = true}) async {
     String searchPath = scannedPath;
     if (!searchPath.endsWith('/')) {
       searchPath += '/';
@@ -59,7 +59,7 @@ class FileDesktopRepository {
     await (db.update(db.files)
           ..where((t) =>
               t.collectionId.equals(collectionId) &
-              (t.parent.equals(scannedPath) | t.parent.like('$searchPath%')) &
+              (recursive ? (t.parent.equals(scannedPath) | t.parent.like('$searchPath%')) : t.parent.equals(scannedPath)) &
               (t.lastScannedDate.isNull() | t.lastScannedDate.isSmallerThanValue(scanStartTime))))
         .write(const FilesCompanion(isDeleted: drift.Value(true)));
   }
@@ -85,13 +85,16 @@ class FileDesktopRepository {
       });
     }
 
-    // 2. Perform a lightweight targeted update just for the lastScannedDate on existing files
+    // 2. Perform a lightweight targeted update just for the lastScannedDate and isDeleted on existing files
     if (existingIds.isNotEmpty) {
       // Use the max scan date from the batch (they should generally all be the same scan run anyway)
       DateTime? scanDate = fileList.firstWhere((f) => existingIds.contains(f.id)).lastScannedDate;
       if (scanDate != null) {
         await (db.update(db.files)..where((t) => t.id.isIn(existingIds)))
-            .write(FilesCompanion(lastScannedDate: drift.Value(scanDate)));
+            .write(FilesCompanion(
+              lastScannedDate: drift.Value(scanDate),
+              isDeleted: drift.Value(false),
+            ));
       }
     }
   }

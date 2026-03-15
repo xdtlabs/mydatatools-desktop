@@ -8,8 +8,9 @@ class CleanupDeletedFilesServiceCommand {
   final String path;
   final DateTime scanStartTime;
   final AppDatabase database;
+  final bool recursive;
 
-  CleanupDeletedFilesServiceCommand(this.collectionId, this.path, this.scanStartTime, this.database);
+  CleanupDeletedFilesServiceCommand(this.collectionId, this.path, this.scanStartTime, this.database, {this.recursive = true});
 }
 
 class CleanupDeletedFilesService {
@@ -24,8 +25,8 @@ class CleanupDeletedFilesService {
       FileDesktopRepository fileRepo = FileDesktopRepository(command.database);
       FolderDesktopRepository folderRepo = FolderDesktopRepository(command.database);
 
-      await fileRepo.markMissingAsDeleted(command.collectionId, command.path, command.scanStartTime);
-      await folderRepo.deleteMissing(command.collectionId, command.path, command.scanStartTime);
+      await fileRepo.markMissingAsDeleted(command.collectionId, command.path, command.scanStartTime, recursive: command.recursive);
+      await folderRepo.deleteMissing(command.collectionId, command.path, command.scanStartTime, recursive: command.recursive);
       
       return 0;
     } catch (e) {

@@ -211,6 +211,16 @@ class _RxFilesPage extends State<RxFilesPage> {
                             });
                             return true;
                           }
+                          if (n is FileDeletedNotification) {
+                            _filesAndFoldersService!.invoke(
+                              GetFileAndFoldersServiceCommand(
+                                collection!,
+                                path ?? collection!.path,
+                                refreshOnly: true,
+                              ),
+                            );
+                            return true;
+                          }
                           return false;
                         },
                       ),

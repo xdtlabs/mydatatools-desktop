@@ -22,10 +22,12 @@ class GetFileAndFoldersService
     FileDesktopRepository fileRepo = FileDesktopRepository(db!);
     FolderDesktopRepository folderRepo = FolderDesktopRepository(db);
 
-    // TODO: first refresh files & folders under path
-    await ScannerManager.getInstance()
-        .getScanner(command.collection)
-        ?.start(command.collection, command.path, false, false);
+    // Skip scanner if it's just a refresh-only request
+    if (!command.refreshOnly) {
+      await ScannerManager.getInstance()
+          .getScanner(command.collection)
+          ?.start(command.collection, command.path, false, false);
+    }
 
     List<FileAsset> files = await fileRepo.getByParentPath(command.path);
     List<FileAsset> folders = await folderRepo.getByParentPath(command.path);
@@ -35,13 +37,15 @@ class GetFileAndFoldersService
     sink.add(assets);
     isLoading.add(false);
 
-    return Future(() => files);
+    return Future(() => assets);
   }
 }
 
 class GetFileAndFoldersServiceCommand implements RxCommand {
   Collection collection;
   String path;
+  bool refreshOnly;
 
-  GetFileAndFoldersServiceCommand(this.collection, this.path);
+  GetFileAndFoldersServiceCommand(this.collection, this.path, {this.refreshOnly = false});
 }
+

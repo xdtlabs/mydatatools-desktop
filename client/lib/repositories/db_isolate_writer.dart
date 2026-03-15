@@ -9,6 +9,7 @@ import 'package:mydatatools/modules/files/services/file_upsert_service.dart';
 import 'package:mydatatools/modules/files/services/folder_upsert_service.dart';
 import 'package:mydatatools/modules/files/services/cleanup_deleted_files_service.dart';
 import 'package:mydatatools/modules/files/services/batch_file_upsert_service.dart';
+import 'package:mydatatools/modules/files/services/repositories/file_repository.dart';
 import 'package:mydatatools/models/tables/file.dart';
 import 'package:mydatatools/repositories/user_repository.dart';
 import 'package:mydatatools/services/get_user_service.dart';
@@ -140,8 +141,13 @@ class DbIsolateWriterClient {
               data['path'] as String, 
               time,
               db,
+              recursive: data['recursive'] ?? true,
             ),
           );
+          replyTo?.send({'status': 'ok'});
+        } else if (data['type'] == 'delete_file') {
+          // Handle file delete
+          await FileDesktopRepository(db).delete(data['file'] as File);
           replyTo?.send({'status': 'ok'});
         } else if (data['type'] == 'user') {
           // Handle user save

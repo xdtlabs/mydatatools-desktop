@@ -8,10 +8,13 @@ import 'dart:math';
 import 'package:mydatatools/models/tables/file.dart';
 import 'package:mydatatools/models/tables/file_asset.dart';
 import 'package:mydatatools/modules/files/files_constants.dart';
+import 'package:mydatatools/modules/files/notifications/file_notification.dart';
 import 'package:mydatatools/modules/files/notifications/path_changed_notification.dart';
 import 'package:mydatatools/modules/files/notifications/sort_changed_notification.dart';
 import 'package:flutter/material.dart';
 import 'package:moment_dart/moment_dart.dart';
+import 'package:mydatatools/modules/files/services/delete_file_service.dart';
+import 'package:mydatatools/database_manager.dart';
 import 'package:open_filex/open_filex.dart';
 
 class FileTable extends StatefulWidget {
@@ -217,7 +220,7 @@ class _FileTable extends State<FileTable> {
               DataCell(
                 ConstrainedBox(
                   constraints: const BoxConstraints(
-                    maxWidth: 100,
+                    maxWidth: 150,
                   ), //SET max width
                   child: Row(
                     children: [
@@ -234,9 +237,9 @@ class _FileTable extends State<FileTable> {
                           await OpenFilex.open(f.path);
                         },
                       ),
-                      const IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: null,
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => _showDeleteConfirmationDialog(context, f),
                       ),
                     ],
                   ),
@@ -302,6 +305,73 @@ class _FileTable extends State<FileTable> {
       }
     }
     return rows;
+  }
+
+  Future<void> _showDeleteConfirmationDialog(BuildContext context, File file) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete File'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Are you sure you want to delete "${file.name}"?'),
+                const SizedBox(height: 8),
+                const Text('This will permanently remove the file from your computer and the database.', style: TextStyle(color: Colors.red)),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await _deleteFile(context, file);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteFile(BuildContext context, File file) async {
+    try {
+      // 1. Delete from file system
+      final ioFile = io.File(file.path);
+      if (await ioFile.exists()) {
+        await ioFile.delete();
+      }
+
+      // 2. Delete from database
+      final db = DatabaseManager.instance.database;
+      if (db != null) {
+        await DeleteFileService.instance.invoke(DeleteFileServiceCommand(file, db));
+      }
+
+      // 3. Notify parent to refresh
+      if (context.mounted) {
+        const FileDeletedNotification().dispatch(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Deleted "${file.name}"')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting file: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget getImageComponent(bool isImage, File file) {

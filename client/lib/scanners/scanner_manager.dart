@@ -50,7 +50,7 @@ class ScannerManager {
         database.select(database.collections).watch();
 
     collectionWatch.listen((changes) {
-      print('Value from controller: $changes');
+      logger.d('Value from controller: $changes');
 
       for (var c in changes) {
         if (getScanner(c) == null) {
@@ -86,7 +86,7 @@ class ScannerManager {
 
     switch (c.scanner) {
       case "file.local":
-        print("Register '${c.scanner}' scanner for ${c.name} | ${c.path}");
+        logger.i("Register '${c.scanner}' scanner for ${c.name} | ${c.path}");
         SendPort? writerPort = await DatabaseManager.instance.writerPort;
         CollectionScanner s = LocalFileIsolate(
           null,
@@ -95,13 +95,13 @@ class ScannerManager {
         scanners.putIfAbsent(c.id, () => s);
         break;
       case "email.gmail":
-        print("Register '${c.scanner}' scanner for ${c.name} | ${c.path}");
+        logger.i("Register '${c.scanner}' scanner for ${c.name} | ${c.path}");
         //CollectionScanner s = GmailScanner(database.config.path, c, fileDir.path);
         //s.start(c, c.path, true, false);
         //scanners.putIfAbsent(c.id, () => s);
         break;
       default:
-        print("Scanner type '${c.scanner}' not recognized.");
+        logger.w("Scanner type '${c.scanner}' not recognized.");
         break;
     }
   }

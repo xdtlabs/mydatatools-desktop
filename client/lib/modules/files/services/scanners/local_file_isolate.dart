@@ -124,6 +124,7 @@ class LocalFileIsolateWorker{
       'collectionId': collectionId,
       'path': path,
       'scanStartTime': scanStartTime,
+      'recursive': recursive,
     });
 
     // return file count
