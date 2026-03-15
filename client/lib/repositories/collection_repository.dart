@@ -60,4 +60,11 @@ class CollectionRepository {
     collection.lastScanDate = DateTime.now();
     await db?.update(db.collections).write(collection);
   }
+
+  Future<void> deleteCollection(String id) async {
+    AppDatabase? db = DatabaseManager.instance.database;
+    if (db != null) {
+      await (db.delete(db.collections)..where((t) => t.id.equals(id))).go();
+    }
+  }
 }

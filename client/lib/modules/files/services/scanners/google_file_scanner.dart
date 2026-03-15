@@ -3,7 +3,7 @@ import 'package:mydatatools/scanners/collection_scanner.dart';
 
 // TODO
 //@see https://pub.dev/packages/driven
-class GoogleFileScanner implements CollectionScanner {
+class GoogleFileScanner extends CollectionScanner {
   final String path;
   final String collectionId;
   final int repeatFrequency;

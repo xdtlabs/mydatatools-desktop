@@ -2,6 +2,7 @@ import 'package:mydatatools/app_constants.dart';
 import 'package:mydatatools/models/tables/collection.dart';
 import 'package:mydatatools/modules/files/pages/rx_files_page.dart';
 import 'package:mydatatools/repositories/collection_repository.dart';
+import 'package:mydatatools/scanners/scanner_manager.dart';
 import 'package:mydatatools/services/get_collections_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -113,11 +114,17 @@ class _NewFileCollectionPage extends State<NewFileCollectionPage> {
                             CollectionRepository()
                                 .addCollection(fc)
                                 .then((value) {
-                              GetCollectionsService.instance.invoke(
-                                  GetCollectionsServiceCommand(
-                                      null)); //reload all
-                              //make new default selected collection
-                              RxFilesPage.selectedCollection.add(value);
+                              if (value != null) {
+                                GetCollectionsService.instance.invoke(
+                                    GetCollectionsServiceCommand(
+                                        null)); //reload all
+                                
+                                // Trigger an initial recursive scan for this new collection
+                                ScannerManager.getInstance().getScanner(value)?.start(value, value.path, true, true);
+
+                                //make new default selected collection
+                                RxFilesPage.selectedCollection.add(value);
+                              }
                             });
 
                             GoRouter.of(context).go('/files');

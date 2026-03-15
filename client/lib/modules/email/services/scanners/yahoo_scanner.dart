@@ -4,7 +4,7 @@ import 'package:mydatatools/models/tables/collection.dart';
 import 'package:mydatatools/modules/email/services/email_repository.dart';
 import 'package:mydatatools/scanners/collection_scanner.dart';
 
-class YahooScanner implements CollectionScanner {
+class YahooScanner extends CollectionScanner {
   final AppDatabase database;
   final Collection collection;
   final int repeatFrequency;

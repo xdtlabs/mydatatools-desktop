@@ -95,4 +95,8 @@ class FileDesktopRepository {
       }
     }
   }
+
+  Future<void> deleteAllByCollectionId(String collectionId) async {
+    await (db.delete(db.files)..where((t) => t.collectionId.equals(collectionId))).go();
+  }
 }

@@ -11,8 +11,8 @@ class FolderDesktopRepository {
 
   Future<Folder?> getByPath(Folder f) async {
     Folder? folder =
-        await (db.select(db.folders)
-          ..where((t) => t.id.equals(f.id))).getSingleOrNull();
+      await (db.select(db.folders)
+          ..where((t) => t.path.equals(f.path) & t.collectionId.equals(f.collectionId))).getSingleOrNull();
 
     return Future(() => folder);
   }
@@ -62,5 +62,9 @@ class FolderDesktopRepository {
               (t.parent.equals(scannedPath) | t.parent.like('$searchPath%')) &
               (t.lastScannedDate.isNull() | t.lastScannedDate.isSmallerThanValue(scanStartTime))))
         .go();
+  }
+
+  Future<void> deleteAllByCollectionId(String collectionId) async {
+    await (db.delete(db.folders)..where((t) => t.collectionId.equals(collectionId))).go();
   }
 }

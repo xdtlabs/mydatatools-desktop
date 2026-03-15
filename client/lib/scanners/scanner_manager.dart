@@ -86,17 +86,16 @@ class ScannerManager {
 
     switch (c.scanner) {
       case "file.local":
-        print("Start '${c.scanner}' scanner for ${c.name} | ${c.path}");
+        print("Register '${c.scanner}' scanner for ${c.name} | ${c.path}");
         SendPort? writerPort = await DatabaseManager.instance.writerPort;
         CollectionScanner s = LocalFileIsolate(
           null,
           writerPort,
         ); // todo: pass in dedicated db write thread
-        s.start(c, c.path, true, false);
         scanners.putIfAbsent(c.id, () => s);
         break;
       case "email.gmail":
-        print("Start '${c.scanner}' scanner for ${c.name} | ${c.path}");
+        print("Register '${c.scanner}' scanner for ${c.name} | ${c.path}");
         //CollectionScanner s = GmailScanner(database.config.path, c, fileDir.path);
         //s.start(c, c.path, true, false);
         //scanners.putIfAbsent(c.id, () => s);

@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 
 // TODO
 //@see https://pub.dev/packages/driven
-class GmailScanner implements CollectionScanner {
+class GmailScanner extends CollectionScanner {
   String dbPath;
   final Collection collection;
   late String appDir;

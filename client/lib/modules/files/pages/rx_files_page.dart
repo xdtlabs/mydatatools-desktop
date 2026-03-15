@@ -11,7 +11,6 @@ import 'package:mydatatools/modules/files/notifications/sort_changed_notificatio
 import 'package:mydatatools/modules/files/pages/new_file_collection_page.dart';
 import 'package:mydatatools/modules/files/services/get_files_and_folders_service.dart';
 import 'package:mydatatools/modules/files/widgets/file_table.dart';
-import 'package:mydatatools/scanners/scanner_manager.dart';
 import 'package:mydatatools/services/get_collections_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
@@ -152,9 +151,9 @@ class _RxFilesPage extends State<RxFilesPage> {
               //refresh path
               if (collection != null) {
                 logger.s("refresh file list");
-                ScannerManager.getInstance()
-                    .getScanner(collection!)
-                    ?.start(collection!, path, false, true);
+                _filesAndFoldersService!.invoke(
+                  GetFileAndFoldersServiceCommand(collection!, path ?? collection!.path),
+                );
               }
             },
           ),
@@ -181,36 +180,55 @@ class _RxFilesPage extends State<RxFilesPage> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: NotificationListener<FiledNotification>(
-                    child: Column(children: [FileTable(data: filesAndFolders)]),
-                    onNotification: (FiledNotification n) {
-                      if (n is PathChangedNotification) {
-                        if (n.asset.path != collection?.path) {
-                          //make sure path changed before triggering reload
-                          path = n.asset.path;
-                          _filesAndFoldersService!.invoke(
-                            GetFileAndFoldersServiceCommand(
-                              collection!,
-                              n.asset.path,
-                            ),
-                          );
-                          return true;
-                        }
-                      }
-                      if (n is SortChangedNotification) {
-                        sortColumn = n.sortColumn;
-                        sortAsc = n.sortAsc;
-                        setState(() {
-                          filesAndFolders = _mergeAndSortRowData(
-                            filesAndFolders,
-                            sortColumn,
-                            sortAsc,
-                          );
-                        });
-                        return true;
-                      }
-                      return false;
-                    },
+                  child: Stack(
+                    children: [
+                      NotificationListener<FiledNotification>(
+                        child:
+                            Column(children: [FileTable(data: filesAndFolders)]),
+                        onNotification: (FiledNotification n) {
+                          if (n is PathChangedNotification) {
+                            if (n.asset.path != collection?.path) {
+                              //make sure path changed before triggering reload
+                              path = n.asset.path;
+                              _filesAndFoldersService!.invoke(
+                                GetFileAndFoldersServiceCommand(
+                                  collection!,
+                                  n.asset.path,
+                                ),
+                              );
+                              return true;
+                            }
+                          }
+                          if (n is SortChangedNotification) {
+                            sortColumn = n.sortColumn;
+                            sortAsc = n.sortAsc;
+                            setState(() {
+                              filesAndFolders = _mergeAndSortRowData(
+                                filesAndFolders,
+                                sortColumn,
+                                sortAsc,
+                              );
+                            });
+                            return true;
+                          }
+                          return false;
+                        },
+                      ),
+                      StreamBuilder<bool>(
+                        stream: _filesAndFoldersService?.isLoading,
+                        builder: (context, snapshot) {
+                          if (snapshot.data == true) {
+                            return Container(
+                              color: Colors.white.withOpacity(0.3),
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -11,7 +11,7 @@ import 'package:mydatatools/scanners/collection_scanner.dart';
 import 'package:path/path.dart' as p;
 
 
-class LocalFileIsolate implements CollectionScanner {
+class LocalFileIsolate extends CollectionScanner {
   RootIsolateToken? token;
   SendPort? loggerIsolatePort;
   SendPort? dbWriterIsolatePort;
@@ -27,6 +27,7 @@ class LocalFileIsolate implements CollectionScanner {
       String? path,
       recursive,
       bool force,) async {
+    isScanning.add(true);
     // A Stream that handles communication between isolates
     ReceivePort p = ReceivePort();
     RootIsolateToken? token = RootIsolateToken.instance;
@@ -47,10 +48,12 @@ class LocalFileIsolate implements CollectionScanner {
         logger?.s(message);
       } else if (message == null) {
         //logger.i("Scan Complete");
+        isScanning.add(false);
         return Future(() => -1);
       }
     }
 
+    isScanning.add(false);
     return Future(() => 0);
   }
 
@@ -220,7 +223,7 @@ class LocalFileIsolateWorker{
     String parentPath = p.dirname(dir_.path);
 
     return Folder(
-        id: '$collectionId_:${dir_.path.hashCode}',
+        id: '$collectionId_:${dir_.path}',
         name: name,
         path: dir_.path,
         parent: parentPath,
@@ -253,7 +256,7 @@ class LocalFileIsolateWorker{
     String parentPath = p.dirname(file_.path);
 
     return File(
-      id: '$collectionId_:${file_.path.hashCode}',
+      id: '$collectionId_:${file_.path}',
       collectionId: collectionId_,
       name: name,
       path: file_.path,

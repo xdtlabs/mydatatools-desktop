@@ -5,6 +5,7 @@ import 'package:mydatatools/modules/files/services/repositories/file_repository.
 import 'package:mydatatools/modules/files/services/repositories/folder_repository.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/services/rx_service.dart';
+import 'package:mydatatools/scanners/scanner_manager.dart';
 
 class GetFileAndFoldersService
     extends RxService<GetFileAndFoldersServiceCommand, List<FileAsset>> {
@@ -22,7 +23,9 @@ class GetFileAndFoldersService
     FolderDesktopRepository folderRepo = FolderDesktopRepository(db);
 
     // TODO: first refresh files & folders under path
-    //ScannerManager.getInstance().getScanner(command.collection).
+    await ScannerManager.getInstance()
+        .getScanner(command.collection)
+        ?.start(command.collection, command.path, false, false);
 
     List<FileAsset> files = await fileRepo.getByParentPath(command.path);
     List<FileAsset> folders = await folderRepo.getByParentPath(command.path);
