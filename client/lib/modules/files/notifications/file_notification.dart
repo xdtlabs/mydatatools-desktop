@@ -15,4 +15,9 @@ class SelectionChangedNotification extends FiledNotification {
   const SelectionChangedNotification(this.selectedItems);
 }
 
+class FileSelectedNotification extends FiledNotification {
+  final FileAsset asset;
+  const FileSelectedNotification(this.asset);
+}
+
 

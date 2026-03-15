@@ -11,6 +11,7 @@ import 'package:mydatatools/modules/files/notifications/sort_changed_notificatio
 import 'package:mydatatools/modules/files/pages/new_file_collection_page.dart';
 import 'package:mydatatools/modules/files/services/get_files_and_folders_service.dart';
 import 'package:mydatatools/modules/files/widgets/file_table.dart';
+import 'package:mydatatools/modules/files/widgets/file_details_drawer.dart';
 import 'package:mydatatools/services/get_collections_service.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/modules/files/services/delete_file_service.dart';
@@ -50,6 +51,8 @@ class _RxFilesPage extends State<RxFilesPage> {
   String sortColumn = "name";
   bool sortAsc = true;
   List<FileAsset> selectedItems = [];
+  FileAsset? selectedAsset;
+  double _drawerWidth = 300;
 
   @override
   void initState() {
@@ -86,6 +89,7 @@ class _RxFilesPage extends State<RxFilesPage> {
         collection = value;
         path = value?.path;
         selectedItems = []; // reset selection on collection change
+        selectedAsset = null; // close details drawer on collection change
       });
     });
 
@@ -219,6 +223,12 @@ class _RxFilesPage extends State<RxFilesPage> {
                             });
                             return true;
                           }
+                          if (n is FileSelectedNotification) {
+                            setState(() {
+                              selectedAsset = n.asset;
+                            });
+                            return true;
+                          }
                           return false;
                         },
                       ),
@@ -239,6 +249,39 @@ class _RxFilesPage extends State<RxFilesPage> {
                     ],
                   ),
                 ),
+                if (selectedAsset != null) ...[  
+                  // ─── Drag handle ───────────────────────────
+                  MouseRegion(
+                    cursor: SystemMouseCursors.resizeColumn,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragUpdate: (details) {
+                        setState(() {
+                          _drawerWidth = (_drawerWidth - details.delta.dx)
+                              .clamp(200.0, 700.0);
+                        });
+                      },
+                      child: Container(
+                        width: 6,
+                        color: Colors.transparent,
+                        child: Center(
+                          child: Container(
+                            width: 2,
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // ─── Drawer ────────────────────────────────
+                  SizedBox(
+                    width: _drawerWidth,
+                    child: FileDetailsDrawer(
+                      asset: selectedAsset!,
+                      onClose: () => setState(() => selectedAsset = null),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

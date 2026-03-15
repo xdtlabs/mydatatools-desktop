@@ -91,6 +91,7 @@ dependencies:
   google_fonts: ^8.0.2
   genui: ^0.7.0
   speech_to_text: ^7.0.0
+  pdfx: ^2.6.0
 
 
 

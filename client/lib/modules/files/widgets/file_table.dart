@@ -184,7 +184,7 @@ class _FileTable extends State<FileTable> {
                   ),
                 ),
                 onTap: () {
-                  debugPrint("todo: show file metadata");
+                  FileSelectedNotification(f).dispatch(context);
                 },
               ),
               DataCell(
@@ -293,14 +293,17 @@ class _FileTable extends State<FileTable> {
                   ),
                 ),
                 onTap: () {
+                  FileSelectedNotification(f).dispatch(context);
                   // TODO
                   //context.go('/files/${f.collectionId}/${f.path}');
                   //alert parent of new path, to show in breadcrumb
+                  /*
                   PathChangedNotification(
                     f,
                     sortColumn,
                     sortAsc,
                   ).dispatch(context);
+                  */
                 },
               ),
               const DataCell(Text('')),
