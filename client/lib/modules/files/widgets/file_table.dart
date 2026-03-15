@@ -50,6 +50,18 @@ class _FileTable extends State<FileTable> {
             sortColumnIndex: sortColumnIndex,
             sortAscending: sortAsc,
             showCheckboxColumn: true,
+            onSelectAll: (bool? selected) {
+              if (selected != null) {
+                setState(() {
+                  if (selected) {
+                    selectedRows = widget.data.map((f) => f.path).toList();
+                  } else {
+                    selectedRows.clear();
+                  }
+                });
+                _notifySelectionChanged(context);
+              }
+            },
             dataTextStyle: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w200,
               fontSize: 15,
@@ -247,11 +259,14 @@ class _FileTable extends State<FileTable> {
               ),
             ],
             onSelectChanged: (bool? e) {
-              if (e != null && e) {
-                selectedRows.add(f.path);
-              } else {
-                selectedRows.remove(f.path);
-              }
+              setState(() {
+                if (e != null && e) {
+                  selectedRows.add(f.path);
+                } else {
+                  selectedRows.remove(f.path);
+                }
+              });
+              _notifySelectionChanged(context);
             },
           ),
         );
@@ -294,17 +309,25 @@ class _FileTable extends State<FileTable> {
               const DataCell(Text('')),
             ],
             onSelectChanged: (bool? e) {
-              if (e != null && e) {
-                selectedRows.add(f.path);
-              } else {
-                selectedRows.remove(f.path);
-              }
+              setState(() {
+                if (e != null && e) {
+                  selectedRows.add(f.path);
+                } else {
+                  selectedRows.remove(f.path);
+                }
+              });
+              _notifySelectionChanged(context);
             },
           ),
         );
       }
     }
     return rows;
+  }
+
+  void _notifySelectionChanged(BuildContext context) {
+    final selectedItems = widget.data.where((f) => selectedRows.contains(f.path)).toList();
+    SelectionChangedNotification(selectedItems).dispatch(context);
   }
 
   Future<void> _showDeleteConfirmationDialog(BuildContext context, File file) async {

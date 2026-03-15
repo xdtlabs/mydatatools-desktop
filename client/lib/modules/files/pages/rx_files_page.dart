@@ -12,6 +12,11 @@ import 'package:mydatatools/modules/files/pages/new_file_collection_page.dart';
 import 'package:mydatatools/modules/files/services/get_files_and_folders_service.dart';
 import 'package:mydatatools/modules/files/widgets/file_table.dart';
 import 'package:mydatatools/services/get_collections_service.dart';
+import 'package:mydatatools/database_manager.dart';
+import 'package:mydatatools/modules/files/services/delete_file_service.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io' as io;
+import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
 import 'package:flutter_breadcrumb/flutter_breadcrumb.dart';
 import 'package:rxdart/rxdart.dart';
@@ -44,6 +49,7 @@ class _RxFilesPage extends State<RxFilesPage> {
   String? path;
   String sortColumn = "name";
   bool sortAsc = true;
+  List<FileAsset> selectedItems = [];
 
   @override
   void initState() {
@@ -79,6 +85,7 @@ class _RxFilesPage extends State<RxFilesPage> {
       setState(() {
         collection = value;
         path = value?.path;
+        selectedItems = []; // reset selection on collection change
       });
     });
 
@@ -128,18 +135,9 @@ class _RxFilesPage extends State<RxFilesPage> {
             },
           ),
           IconButton(
-            // TODO: disable is no files are checked
             icon: const Icon(Icons.download, color: Colors.black, weight: 200),
             tooltip: 'Download File(s)',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'todo: download single file or zip of multiple',
-                  ),
-                ),
-              );
-            },
+            onPressed: selectedItems.isEmpty ? null : () => _downloadSelectedFiles(context),
           ),
           IconButton(
             // TODO: disable is no files are checked
@@ -158,16 +156,9 @@ class _RxFilesPage extends State<RxFilesPage> {
             },
           ),
           IconButton(
-            // TODO: disable if no files are checked
             icon: const Icon(Icons.delete, color: Colors.black, weight: 300),
             tooltip: 'Delete File(s)',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('todo: delete file or set of files'),
-                ),
-              );
-            },
+            onPressed: selectedItems.isEmpty ? null : () => _showBulkDeleteConfirmationDialog(context),
           ),
         ],
       ),
@@ -190,6 +181,7 @@ class _RxFilesPage extends State<RxFilesPage> {
                             if (n.asset.path != collection?.path) {
                               //make sure path changed before triggering reload
                               path = n.asset.path;
+                              selectedItems = []; // reset selection on path change
                               _filesAndFoldersService!.invoke(
                                 GetFileAndFoldersServiceCommand(
                                   collection!,
@@ -219,6 +211,12 @@ class _RxFilesPage extends State<RxFilesPage> {
                                 refreshOnly: true,
                               ),
                             );
+                            return true;
+                          }
+                          if (n is SelectionChangedNotification) {
+                            setState(() {
+                              selectedItems = n.selectedItems;
+                            });
                             return true;
                           }
                           return false;
@@ -341,5 +339,112 @@ class _RxFilesPage extends State<RxFilesPage> {
     });
 
     return fileAssets;
+  }
+
+  Future<void> _showBulkDeleteConfirmationDialog(BuildContext context) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Multiple Files'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Are you sure you want to delete ${selectedItems.length} items?'),
+                const SizedBox(height: 8),
+                const Text('This will permanently remove these files from your computer and the database.', style: TextStyle(color: Colors.red)),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await _deleteSelectedFiles(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteSelectedFiles(BuildContext context) async {
+    final itemsToDelete = List<FileAsset>.from(selectedItems);
+    int deletedCount = 0;
+    int errorCount = 0;
+
+    for (var item in itemsToDelete) {
+      if (item is File) {
+        try {
+          final ioFile = io.File(item.path);
+          if (await ioFile.exists()) {
+            await ioFile.delete();
+          }
+          final db = DatabaseManager.instance.database;
+          if (db != null) {
+            await DeleteFileService.instance.invoke(DeleteFileServiceCommand(item, db));
+          }
+          deletedCount++;
+        } catch (e) {
+          logger.e("Error deleting ${item.path}: $e");
+          errorCount++;
+        }
+      }
+    }
+
+    if (context.mounted) {
+      setState(() {
+        selectedItems = [];
+      });
+      // Refresh list
+      _filesAndFoldersService!.invoke(
+        GetFileAndFoldersServiceCommand(
+          collection!,
+          path ?? collection!.path,
+          refreshOnly: true,
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deleted $deletedCount files${errorCount > 0 ? ' ($errorCount errors)' : ''}')),
+      );
+    }
+  }
+
+  Future<void> _downloadSelectedFiles(BuildContext context) async {
+    String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+
+    if (selectedDirectory == null) return;
+
+    int copiedCount = 0;
+    int errorCount = 0;
+
+    for (var item in selectedItems) {
+      if (item is File) {
+        try {
+          final sourceFile = io.File(item.path);
+          final fileName = p.basename(item.path);
+          final destinationPath = p.join(selectedDirectory, fileName);
+          await sourceFile.copy(destinationPath);
+          copiedCount++;
+        } catch (e) {
+          logger.e("Error copying ${item.path}: $e");
+          errorCount++;
+        }
+      }
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Copied $copiedCount files to $selectedDirectory${errorCount > 0 ? ' ($errorCount errors)' : ''}')),
+      );
+    }
   }
 }

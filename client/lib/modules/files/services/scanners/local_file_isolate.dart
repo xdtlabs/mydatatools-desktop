@@ -119,13 +119,20 @@ class LocalFileIsolateWorker{
       scanStartTime,
     );
 
+    // Final cleanup and sync
+    final ReceivePort syncPort = ReceivePort();
     dbWriterPort.send({
       'type': 'cleanup_deleted',
       'collectionId': collectionId,
       'path': path,
       'scanStartTime': scanStartTime,
       'recursive': recursive,
+      'replyTo': syncPort.sendPort, // Await this to ensure DB is updated before isolate exits
     });
+
+    // Wait for the DB writer to finish the cleanup task
+    await syncPort.first;
+    syncPort.close();
 
     // return file count
     Isolate.exit(receiverPort, fileCount);
