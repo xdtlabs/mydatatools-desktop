@@ -42,6 +42,7 @@ class DatabaseManager {
   DbIsolateWriterClient? _writerIsolateClient;
   SendPort? _writerPort;
   DatabaseRepository? _repository;
+  final AppLogger logger = AppLogger(null);
 
   DatabaseManager._();
 
@@ -118,12 +119,12 @@ class DatabaseManager {
         AppConstants.dbName,
         useMemoryDb,
       );
-      print("DB Started | schema version=${database.schemaVersion}");
+      logger.i("DB Started | schema version=${database.schemaVersion}");
 
       return database;
     } catch (err) {
       //unknown error
-      print(err);
+      logger.e(err);
       throw Exception(err);
     }
   }
@@ -192,14 +193,14 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
-        print("Creating all Tables");
+        logger.i("Creating all Tables");
         await m.createAll();
-        print("Load initial data");
+        logger.i("Load initial data");
         await _loadInitialData(m);
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
-          print("Upgrade to v2: Adding last_scanned_date to Files and Folders");
+          logger.i("Upgrade to v2: Adding last_scanned_date to Files and Folders");
           await m.addColumn(files, files.lastScannedDate);
           await m.addColumn(folders, folders.lastScannedDate);
         }
@@ -309,7 +310,7 @@ LazyDatabase _openConnection(String? path, String? name, bool useMemoryDb) {
   }
   // the LazyDatabase util lets us find the right location for the file async.
   return LazyDatabase(() async {
-    print('Initialize Database | path=$path');
+    AppLogger(null).i('Initialize Database | path=$path');
     //check app startup initialization
     io.File file = io.File(p.join(path!, 'data', name));
     path = file.path;
@@ -320,7 +321,7 @@ LazyDatabase _openConnection(String? path, String? name, bool useMemoryDb) {
     // Explicitly tell it about the correct temporary directory.
     sqlite3.tempDirectory = (await getTemporaryDirectory()).path;
 
-    print("Opening Database | $path");
+    AppLogger(null).i("Opening Database | $path");
     if (!useMemoryDb) {
       return NativeDatabase(
         file,

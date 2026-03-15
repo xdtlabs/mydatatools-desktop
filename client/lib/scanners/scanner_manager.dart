@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/models/tables/collection.dart';
 import 'package:mydatatools/modules/files/services/scanners/local_file_isolate.dart';
 
 import 'package:mydatatools/scanners/collection_scanner.dart';
-import 'package:logger/logger.dart';
 
 class ScannerManager {
-  final Logger logger = Logger();
+  final AppLogger logger = AppLogger(null);
   static final ScannerManager _instance = ScannerManager._internal();
   List<Collection> collections = [];
   Map<String, CollectionScanner> scanners = {};

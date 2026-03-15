@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:mydatatools/app_constants.dart';
+import 'package:mydatatools/app_logger.dart';
 import 'package:mydatatools/app_router.dart';
 import 'package:mydatatools/database_manager.dart';
 import 'package:mydatatools/family_dam_app.dart';
@@ -196,7 +197,7 @@ class MainAppState extends State<MainApp>
       }
     } catch (e) {
       // Log error but don't block startup
-      Logger().e("Auto-login failed", error: e);
+      AppLogger(null).e("Auto-login failed", error: e);
     }
   }
 
